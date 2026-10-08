@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Convertidor y Visor Markdown (.md)</title>
+    <!-- Mammoth.js para archivos Word (.docx) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+    <!-- PDF.js para archivos PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <!-- Turndown para convertir HTML/Texto a Markdown -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/turndown/7.1.2/turndown.min.js"></script>
+    <!-- Marked.js para renderizar la vista previa (Visor MD) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+    <!-- Tesseract.js para OCR en español -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text: #1e293b;
+            --border: #e2e8f0;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 2rem;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 900px;
+            background: var(--card-bg);
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            margin-top: 0;
+            color: var(--text);
+            font-size: 1.5rem;
+        }
+
+        p {
+            color: #64748b;
+            font-size: 0.95rem;
+        }
+
+        .dropzone {
+            border: 2px dashed var(--border);
+            border-radius: 8px;
+            padding: 2.5rem;
+            text-align: center;
+            background: #f1f5f9;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin: 1.5rem 0;
+        }
+
+        .dropzone:hover, .dropzone.dragover {
+            border-color: var(--primary);
+            background: #eff6ff;
+        }
+
+        .dropzone input {
+            display: none;
+        }
+
+        .controls {
+            display: flex;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.6rem 1.2rem;
+            border-radius: 6px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        button:hover {
+            background-color: var(--primary-hover);
+        }
+
+        button.secondary {
+            background-color: #475569;
+        }
+
+        button.secondary:hover {
+            background-color: #334155;
+        }
+
+        button:disabled {
+            background-color: #cbd5e1;
+            cursor: not-allowed;
+        }
+
+        #status {
+            font-size: 0.9rem;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+            color: var(--primary);
+        }
+
+        /* Estilos del editor y visor */
+        textarea, .preview-box {
+            width: 100%;
+            height: 450px;
+            padding: 1rem;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            box-sizing: border-box;
+            overflow-y: auto;
+        }
+
+        textarea {
+            font-family: monospace;
+            font-size: 0.9rem;
+            resize: vertical;
+            background-color: #f8fafc;
+        }
+
+        /* Estilos CSS para renderizar correctamente el Markdown en el Visor */
+        .preview-box {
+            background-color: #ffffff;
+            color: #0f172a;
+            line-height: 1.6;
+        }
+
+        .preview-box h1, .preview-box h2, .preview-box h3 {
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 0.3em;
+            margin-top: 1.5em;
+        }
+
+        .preview-box code {
+            background-color: #f1f5f9;
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.88em;
+        }
+
+        .preview-box pre {
+            background-color: #f1f5f9;
+            padding: 1rem;
+            border-radius: 6px;
+            overflow-x: auto;
+        }
+
+        .preview-box blockquote {
+            border-left: 4px solid var(--primary);
+            margin: 0;
+            padding-left: 1rem;
+            color: #64748b;
+        }
+
+        .preview-box table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1rem 0;
+        }
+
+        .preview-box th, .preview-box td {
+            border: 1px solid var(--border);
+            padding: 0.5rem;
+            text-align: left;
+        }
+
+        .preview-box th {
+            background-color: #f1f5f9;
+        }
+
+        .credits {
+            margin-top: 1.5rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border);
+            font-size: 0.8rem;
+            color: #64748b;
+            text-align: center;
+        }
+
+        .credits a {
+            color: inherit;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Convertidor y Visor Markdown</h1>
+    <p>Soporta <strong>PDF, Word (.docx), texto (.txt, .html, .rtf, .md) e imágenes (.png, .jpg, .jpeg, .webp)</strong>. El OCR utiliza español y conserva tildes.</p>
+
+    <div class="dropzone" id="dropzone" onclick="document.getElementById('fileInput').click()">
+        <span>Arrastra tu archivo aquí o <strong>haz clic para seleccionar</strong></span>
+        <input type="file" id="fileInput" accept=".pdf,.docx,.txt,.html,.htm,.rtf,.md,.png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp">
+    </div>
+
+    <div id="status"></div>
+
+    <div class="controls">
+        <button id="copyBtn" disabled onclick="copyToClipboard()">Copiar al portapapeles</button>
+        <button id="downloadBtn" disabled onclick="downloadMd()">Descargar .md</button>
+        <button id="previewBtn" class="secondary" disabled onclick="togglePreview()">Ver Vista Previa (Visor MD)</button>
+    </div>
+
+    <!-- Área de Código -->
+    <textarea id="output" placeholder="El resultado en Markdown aparecerá aquí..."></textarea>
+    
+    <!-- Área de Visor MD (Oculto por defecto) -->
+    <div id="preview" class="preview-box" style="display: none;"></div>
+
+    <footer class="credits">
+        Los archivos se procesan en tu navegador; no se suben a ningún servidor.<br>
+        Hecho con
+        <a href="https://mozilla.github.io/pdf.js/" target="_blank" rel="noopener">PDF.js</a>,
+        <a href="https://github.com/naptha/tesseract.js" target="_blank" rel="noopener">Tesseract.js</a>,
+        <a href="https://github.com/mwilliamson/mammoth.js" target="_blank" rel="noopener">Mammoth.js</a>,
+        <a href="https://github.com/mixmark-io/turndown" target="_blank" rel="noopener">Turndown</a> y
+        <a href="https://github.com/markedjs/marked" target="_blank" rel="noopener">Marked</a>.
+    </footer>
+</div>
+
+<script>
+    // Configuración de PDF.js Worker
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+    // Inicialización de Turndown (HTML a MD)
+    const turndownService = new TurndownService({
+        headingStyle: 'atx',
+        codeBlockStyle: 'fenced'
+    });
+    
+    // Ignorar e ignorar todas las imágenes
+    turndownService.remove('img');
+
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('fileInput');
+    const output = document.getElementById('output');
+    const preview = document.getElementById('preview');
+    const status = document.getElementById('status');
+    const copyBtn = document.getElementById('copyBtn');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const previewBtn = document.getElementById('previewBtn');
+
+    let currentFileName = "documento";
+    let isPreviewing = false;
+
+    // Manejo de Drag and Drop
+    dropzone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropzone.classList.add('dragover');
+    });
+
+    dropzone.addEventListener('dragleave', () => {
+        dropzone.classList.remove('dragover');
+    });
+
+    dropzone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropzone.classList.remove('dragover');
+        if (e.dataTransfer.files.length) {
+            handleFile(e.dataTransfer.files[0]);
+        }
+    });
+
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length) {
+            handleFile(e.target.files[0]);
+        }
+    });
+
+    async function handleFile(file) {
+        currentFileName = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
+        const extension = file.name.split('.').pop().toLowerCase();
+
+        output.value = "";
+        preview.innerHTML = "";
+        status.textContent = "Procesando archivo...";
+        toggleButtons(false);
+
+        try {
+            let markdown = "";
+            const fileBytes = new Uint8Array(await file.arrayBuffer());
+
+            if (extension === 'docx') {
+                markdown = await processDocx(fileBytes.buffer);
+            } else if (extension === 'pdf') {
+                markdown = await processPdf(fileBytes);
+            } else if (['png', 'jpg', 'jpeg', 'webp'].includes(extension)) {
+                markdown = await processImage(file);
+            } else if (['html', 'htm'].includes(extension)) {
+                const text = new TextDecoder().decode(fileBytes);
+                markdown = turndownService.turndown(text);
+            } else {
+                markdown = new TextDecoder().decode(fileBytes);
+            }
+
+            output.value = markdown.trim();
+            status.textContent = "¡Conversión completada con éxito!";
+            toggleButtons(true);
+
+            // Si el visor estaba activo, actualizar su contenido
+            if (isPreviewing) {
+                renderMarkdown();
+            }
+        } catch (error) {
+            console.error(error);
+            status.textContent = "Error al procesar el archivo: " + error.message;
+        }
+    }
+
+    // Procesar Word (.docx)
+    async function processDocx(arrayBuffer) {
+        const result = await mammoth.convertToHtml({ arrayBuffer: arrayBuffer });
+        return turndownService.turndown(result.value);
+    }
+
+    // Escala de render para el OCR: en las pruebas, 3 (~216 ppp) reconoce mejor
+    // cifras y guiones que 2, y 4 ya no mejora y es más lento.
+    const OCR_SCALE = 3;
+
+    // Procesar PDF: usa la capa de texto y aplica OCR solo a las páginas escaneadas
+    async function processPdf(fileBytes) {
+        const pdf = await pdfjsLib.getDocument({ data: fileBytes }).promise;
+        const pages = [];
+        let ocr = null;
+
+        try {
+            for (let i = 1; i <= pdf.numPages; i++) {
+                status.textContent = `Procesando página ${i} de ${pdf.numPages}...`;
+                const page = await pdf.getPage(i);
+                let lines = await extractTextLines(page);
+
+                if (lines.map(l => l.text).join('').replace(/\s/g, '').length < 20) {
+                    if (!ocr) {
+                        status.textContent = "Cargando OCR en español...";
+                        ocr = await createOcr();
+                    }
+                    const canvas = await renderPage(page, OCR_SCALE);
+                    lines = await ocr.recognize(canvas, `OCR de página ${i} de ${pdf.numPages}`);
+                    canvas.width = canvas.height = 0;
+                }
+
+                pages.push(lines);
+                page.cleanup();
+            }
+        } finally {
+            if (ocr) await ocr.terminate();
+        }
+
+        return linesToMarkdown(pages);
+    }
+
+    // Agrupa los fragmentos de la capa de texto en líneas con posición normalizada (0–1)
+    async function extractTextLines(page) {
+        const viewport = page.getViewport({ scale: 1 });
+        const content = await page.getTextContent();
+        const items = [];
+
+        for (const item of content.items) {
+            if (!item.str || !item.str.trim()) continue;
+            const tx = pdfjsLib.Util.transform(viewport.transform, item.transform);
+            items.push({ str: item.str, x: tx[4], y: tx[5], w: item.width, h: Math.hypot(tx[2], tx[3]) || 1 });
+        }
+        items.sort((a, b) => a.y - b.y || a.x - b.x);
+
+        const rows = [];
+        for (const item of items) {
+            const row = rows[rows.length - 1];
+            if (row && Math.abs(row.y - item.y) < Math.min(row.h, item.h) * 0.5) {
+                row.items.push(item);
+                row.h = Math.max(row.h, item.h);
+            } else {
+                rows.push({ y: item.y, h: item.h, items: [item] });
+            }
+        }
+
+        return rows.map(row => {
+            row.items.sort((a, b) => a.x - b.x);
+            let text = '';
+            let end = null;
+            for (const item of row.items) {
+                if (end !== null && item.x - end > row.h * 0.15 && !/\s$/.test(text) && !/^\s/.test(item.str)) {
+                    text += ' ';
+                }
+                text += item.str;
+                end = Math.max(end ?? 0, item.x + item.w);
+            }
+            return {
+                text,
+                conf: 100,
+                x0: row.items[0].x / viewport.width,
+                x1: end / viewport.width,
+                y0: (row.y - row.h) / viewport.height,
+                y1: row.y / viewport.height
+            };
+        });
+    }
+
+    async function renderPage(page, scale) {
+        const viewport = page.getViewport({ scale });
+        const canvas = document.createElement('canvas');
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+        return canvas;
+    }
+
+    // Un solo worker de Tesseract para todo el archivo (antes se creaba uno por página)
+    async function createOcr() {
+        let label = '';
+        const worker = await Tesseract.createWorker('spa', 1, {
+            logger: (message) => {
+                if (message.status === 'recognizing text') {
+                    status.textContent = `${label}: ${Math.round(message.progress * 100)}%`;
+                }
+            }
+        });
+
+        return {
+            async recognize(canvas, text) {
+                label = text;
+                status.textContent = text + '...';
+                const { data } = await worker.recognize(canvas);
+                const lines = [];
+                for (const block of data.blocks || []) {
+                    for (const paragraph of block.paragraphs) {
+                        for (const line of paragraph.lines) {
+                            lines.push({
+                                text: line.text,
+                                conf: line.confidence,
+                                x0: line.bbox.x0 / canvas.width,
+                                x1: line.bbox.x1 / canvas.width,
+                                y0: line.bbox.y0 / canvas.height,
+                                y1: line.bbox.y1 / canvas.height
+                            });
+                        }
+                    }
+                }
+                return lines;
+            },
+            terminate: () => worker.terminate()
+        };
+    }
+
+    // OCR en imágenes
+    async function processImage(file) {
+        const bitmap = await createImageBitmap(file);
+        // Las imágenes pequeñas se amplían: Tesseract falla con letra de pocos píxeles
+        const scale = bitmap.width < 1200 ? 2 : 1;
+        const canvas = document.createElement('canvas');
+        canvas.width = bitmap.width * scale;
+        canvas.height = bitmap.height * scale;
+        canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+        bitmap.close();
+
+        status.textContent = "Cargando OCR en español...";
+        const ocr = await createOcr();
+        try {
+            return linesToMarkdown([await ocr.recognize(canvas, 'Reconociendo texto')]);
+        } finally {
+            await ocr.terminate();
+        }
+    }
+
+    // ---- Reconstrucción de Markdown a partir de líneas posicionadas ----
+    // Cada página es una lista de líneas { text, conf, x0, x1, y0, y1 } con
+    // coordenadas normalizadas (0–1). Se quitan encabezados y pies repetidos y
+    // ruido del OCR, y se rearman párrafos, títulos, citas y tablas sencillas.
+
+    const AMOUNT_RE = /(?:\$\s?)?\d{1,3}(?:[.,]\d{3})+(?:,\d{1,2})?\s*$/;
+    const TERMINAL_RE = /[.:;!?”"»]$/;
+
+    function linesToMarkdown(pages) {
+        const multiPage = pages.length > 1;
+        pages = pages.map(lines => lines
+            .map(line => ({ ...line, text: cleanLine(line.text) }))
+            .filter(line => isUsefulLine(line, multiPage)));
+
+        markRepeatedLines(pages);
+        pages = pages.map(lines => lines.filter(line => !line.drop));
+
+        const blocks = [];
+        for (const lines of pages) {
+            const pageBlocks = buildBlocks(lines);
+            const last = blocks[blocks.length - 1];
+            const first = pageBlocks[0];
+            // Párrafo cortado por el salto de página
+            if (last && first && last.type === first.type && (last.type === 'p' || last.type === 'quote')
+                && !TERMINAL_RE.test(last.lines[last.lines.length - 1])) {
+                last.lines.push(...first.lines);
+                pageBlocks.shift();
+            }
+            blocks.push(...pageBlocks);
+        }
+
+        let firstHeading = true;
+        return blocks.map(block => {
+            if (block.type === 'table') return renderTable(block.rows);
+            const text = escapeStart(joinLines(block.lines));
+            if (block.type === 'heading') {
+                const prefix = firstHeading ? '# ' : '## ';
+                firstHeading = false;
+                return prefix + text;
+            }
+            const body = boldLegalPrefix(text);
+            return block.type === 'quote' ? '> ' + body : body;
+        }).join('\n\n');
+    }
+
+    function cleanLine(text) {
+        let t = text.replace(/\s+/g, ' ').trim();
+        let previous;
+        do {
+            previous = t;
+            // Marcas sueltas al final: "rurales. -", "Atlántico —-", "vigencia.” . \" -"
+            t = t.replace(/([^\p{L}\p{N}\s])(?:\s+[-–—.,'"“”*|~_]+)+$/u, '$1');
+            t = t.replace(/\s+[—–|*~_•·]+-?$/u, '');
+            // Marcas sueltas al inicio: "- CONSIDERANDO", "* académica"
+            t = t.replace(/^[-–—*|]+\s+(?=\S)/u, '');
+            // Letra suelta tras fin de frase (rúbricas o sellos al margen): "Atlántico. A"
+            t = t.replace(/([.;:”"])\s+\p{L}$/u, '$1');
+        } while (t !== previous);
+        // Puntuación aislada entre palabras: "zonas . rurales", "de .. educación"
+        t = t.replace(/(\p{L})\s+[.:;,]{1,3}\s+(?=\p{L})/gu, '$1 ');
+        return t.replace(/^[•·▪]\s+/u, '- ');
+    }
+
+    function isUsefulLine(line, multiPage) {
+        if ((line.text.match(/[\p{L}\p{N}]/gu) || []).length < 2) return false;
+        if (line.conf < 45) return false;
+        // En documentos, las franjas superior e inferior suelen ser logos, sellos y pies
+        const inMargin = line.y0 < 0.1 || line.y1 > 0.9;
+        if (multiPage && inMargin) {
+            if (line.conf < 80) return false;
+            if (/^(p[áa]g(ina)?\.?\s*)?\d{1,4}(\s*(de|\/)\s*\d{1,4})?$/i.test(line.text)) return false;
+        }
+        return true;
+    }
+
+    // Encabezados/pies que se repiten en la mitad o más de las páginas: se conserva
+    // solo la primera aparición (si no está en el margen) y se eliminan las demás.
+    function markRepeatedLines(pages) {
+        if (pages.length < 3) return;
+        const minPages = Math.max(3, Math.ceil(pages.length * 0.5));
+        const candidates = pages.map(lines => lines
+            .filter(line => line.y0 < 0.3 || line.y1 > 0.85)
+            .map(line => ({ line, grams: bigrams(normalizeKey(line.text)) })));
+
+        candidates.forEach((own, p) => {
+            for (const c of own) {
+                if (c.line.repeated) continue;
+                const group = [c];
+                candidates.forEach((other, q) => {
+                    if (q === p) return;
+                    const match = other.find(d => !d.line.repeated
+                        && Math.abs(d.line.y0 - c.line.y0) < 0.05
+                        && dice(c.grams, d.grams) >= 0.8);
+                    if (match) group.push(match);
+                });
+                if (group.length < minPages) continue;
+                group.forEach((g, i) => {
+                    g.line.repeated = true;
+                    g.line.drop = i > 0 || g.line.y0 < 0.1 || g.line.y1 > 0.9;
+                });
+            }
+        });
+    }
+
+    function normalizeKey(text) {
+        return text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+            .replace(/\d/g, '#').replace(/[^a-z#]/g, '');
+    }
+
+    function bigrams(text) {
+        const counts = new Map();
+        for (let i = 0; i < text.length - 1; i++) {
+            const g = text.slice(i, i + 2);
+            counts.set(g, (counts.get(g) || 0) + 1);
+        }
+        return { counts, total: Math.max(text.length - 1, 0) };
+    }
+
+    function dice(a, b) {
+        if (!a.total || !b.total) return 0;
+        let common = 0;
+        for (const [g, n] of a.counts) common += Math.min(n, b.counts.get(g) || 0);
+        return (2 * common) / (a.total + b.total);
+    }
+
+    function buildBlocks(lines) {
+        if (!lines.length) return [];
+
+        const median = values => {
+            const sorted = [...values].sort((a, b) => a - b);
+            return sorted[Math.floor(sorted.length / 2)];
+        };
+        const lineH = median(lines.map(l => l.y1 - l.y0));
+        const gaps = lines.slice(1).map((l, i) => l.y0 - lines[i].y1).filter(g => g > -lineH);
+        const gapLimit = (gaps.length ? median(gaps) : 0) + lineH * 0.5;
+        const sortedX0 = lines.map(l => l.x0).sort((a, b) => a - b);
+        const margin = sortedX0.find(x => lines.filter(l => Math.abs(l.x0 - x) < 0.01).length >= 3) ?? sortedX0[0];
+        const right = [...lines.map(l => l.x1)].sort((a, b) => a - b)[Math.floor(lines.length * 0.9)];
+        const center = (margin + right) / 2;
+
+        const isIndented = l => l.x0 - margin >= 0.025;
+        const isCentered = l => l.x0 - margin > 0.03 && right - l.x1 > 0.03 && Math.abs((l.x0 + l.x1) / 2 - center) < 0.1;
+        const isUpper = l => {
+            const letters = l.text.match(/\p{L}/gu) || [];
+            return letters.length >= 4 && letters.filter(c => c === c.toUpperCase()).length / letters.length >= 0.85;
+        };
+        const startsList = l => /^([a-zA-Z]|\d{1,2}|[ivxIVX]{1,4})[).]\s/.test(l.text);
+        const startsSection = l => /^(ART[ÍI]CULO|PAR[ÁA]GRAFO|CAP[ÍI]TULO)\b/u.test(l.text) || startsList(l);
+
+        const tableLines = findTableLines(lines, lineH);
+        const blocks = [];
+        let para = null;
+
+        lines.forEach((line, i) => {
+            if (tableLines.has(i)) {
+                const table = tableLines.get(i);
+                if (table.start === i) blocks.push({ type: 'table', rows: table.rows });
+                para = null;
+                return;
+            }
+
+            const prev = para && para.items[para.items.length - 1];
+            let split = !prev;
+            if (prev) {
+                const prevEnds = TERMINAL_RE.test(prev.text);
+                // Un cambio de sangría solo abre párrafo tras un final de frase; así no se
+                // parten la sangría de primera línea ni los títulos centrados de varias líneas
+                split = line.y0 - prev.y1 > gapLimit
+                    || (isIndented(prev) !== isIndented(line) && prevEnds)
+                    || (prev.x1 < right - 0.12 && prevEnds)
+                    || (isUpper(prev) !== isUpper(line) && !/-$/.test(prev.text))
+                    || (startsSection(line) && prevEnds);
+            }
+
+            if (split) {
+                para = { items: [] };
+                blocks.push(para);
+            }
+            para.items.push(line);
+        });
+
+        return blocks.map(block => {
+            if (block.type === 'table') return block;
+            const items = block.items;
+            const text = items.map(l => l.text);
+            const first = items[0];
+            if (isUpper(first) && items.length <= 2 && joinLines(text).length <= 100
+                && (isCentered(first) || /:$/.test(first.text) || /^\d{1,2}(\.\d+)*\.\s+\p{Lu}/u.test(first.text))) {
+                return { type: 'heading', lines: text };
+            }
+            // Cita: líneas con la misma sangría (un texto centrado no la tiene); se tolera
+            // una línea desviada por ruido del OCR
+            const midX0 = median(items.map(l => l.x0));
+            const offAlign = items.filter(l => Math.abs(l.x0 - midX0) >= 0.015).length;
+            const aligned = items.length > 1 ? offAlign <= (items.length >= 4 ? 1 : 0) : !isCentered(first);
+            const quote = items.every(isIndented) && aligned && !startsList(first);
+            return { type: quote ? 'quote' : 'p', lines: text };
+        });
+    }
+
+    // Tabla sencilla: 3 o más líneas que terminan en un importe alineado a la derecha.
+    // Las líneas sin importe entre ellas (o justo después) continúan la fila anterior.
+    function findTableLines(lines, lineH) {
+        const result = new Map();
+        let i = 0;
+        while (i < lines.length) {
+            if (!AMOUNT_RE.test(lines[i].text) || AMOUNT_RE.exec(lines[i].text).index === 0) { i++; continue; }
+            const members = [i];
+            let j = i + 1;
+            while (j < lines.length && j - members[members.length - 1] <= 2) {
+                if (AMOUNT_RE.test(lines[j].text) && Math.abs(lines[j].x1 - lines[i].x1) < 0.03) members.push(j);
+                j++;
+            }
+            if (members.length < 3) { i++; continue; }
+
+            let end = members[members.length - 1];
+            const next = lines[end + 1];
+            if (next && !AMOUNT_RE.test(next.text) && next.y0 - lines[end].y1 < lineH * 0.6 && next.text.length < 40) end++;
+
+            const rows = [];
+            for (let k = i; k <= end; k++) {
+                const text = lines[k].text;
+                const match = AMOUNT_RE.exec(text);
+                const label = (match ? text.slice(0, match.index) : text)
+                    .replace(/^[\s.,|]+/, '').replace(/^\d{1,2}\s*\|\s*/, '').replace(/^[a-z]{1,2}\s+(?=\p{Lu})/u, '')
+                    .replace(/[\s|]+$/, '');
+                if (match) rows.push([label, match[0].trim()]);
+                else if (rows.length) rows[rows.length - 1][0] += ' ' + label;
+                else rows.push([label, '']);
+            }
+            const table = { start: i, rows };
+            for (let k = i; k <= end; k++) result.set(k, table);
+            i = end + 1;
+        }
+        return result;
+    }
+
+    function renderTable(rows) {
+        const cell = text => text.replace(/\|/g, '\\|');
+        return ['| | |', '|---|---:|', ...rows.map(([label, amount]) => `| ${cell(label)} | ${cell(amount)} |`)].join('\n');
+    }
+
+    function joinLines(lines) {
+        return lines.reduce((text, line) => {
+            if (!text) return line;
+            // Palabra partida con guion al final de la línea
+            if (/\p{Ll}-$/u.test(text) && /^\p{Ll}/u.test(line)) return text.slice(0, -1) + line;
+            // Guion suelto del OCR antes de una palabra en minúscula: "se -" + "fija"
+            if (/\s-$/.test(text) && /^\p{Ll}/u.test(line)) return text.slice(0, -1) + line;
+            // Guion que une siglas o códigos: "(PIC -" + "ET)"
+            if (/-$/.test(text)) return text + line;
+            return text + ' ' + line;
+        }, '');
+    }
+
+    function boldLegalPrefix(text) {
+        return text.replace(/^((?:ART[ÍI]CULO|PAR[ÁA]GRAFO)(?:\s+[\p{Lu}\dº°.]+)*?\s*[:.])(?=\s)/u, '**$1**');
+    }
+
+    function escapeStart(text) {
+        return text.replace(/^([#>+])/, '\\$1');
+    }
+
+    // Alternar entre Vista Previa y Código Fuente
+    function togglePreview() {
+        isPreviewing = !isPreviewing;
+
+        if (isPreviewing) {
+            renderMarkdown();
+            output.style.display = 'none';
+            preview.style.display = 'block';
+            previewBtn.textContent = 'Ver Código Markdown';
+        } else {
+            output.style.display = 'block';
+            preview.style.display = 'none';
+            previewBtn.textContent = 'Ver Vista Previa (Visor MD)';
+        }
+    }
+
+    function renderMarkdown() {
+        preview.innerHTML = marked.parse(output.value || '*No hay contenido disponible*');
+    }
+
+    function toggleButtons(enabled) {
+        copyBtn.disabled = !enabled;
+        downloadBtn.disabled = !enabled;
+        previewBtn.disabled = !enabled;
+    }
+
+    function copyToClipboard() {
+        navigator.clipboard.writeText(output.value);
+        alert("¡Texto en Markdown copiado al portapapeles!");
+    }
+
+    function downloadMd() {
+        const blob = new Blob([output.value], { type: 'text/markdown;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${currentFileName}.md`;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+</script>
+
+</body>
+</html>
