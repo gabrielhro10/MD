@@ -11,8 +11,6 @@ Los archivos se procesan localmente en el navegador; no se envían a ningún ser
 
 ## Uso
 
-Abre `index.html` en el navegador o publícalo con GitHub Pages (**Settings → Pages → Deploy from a branch → `main` / root**).
-
 Necesita conexión a internet: las librerías se cargan desde CDN, y el OCR descarga el modelo de idioma español la primera vez.
 
 ## Créditos
