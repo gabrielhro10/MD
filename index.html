@@ -87,14 +87,35 @@
             inset: 0 0 auto 0;
             z-index: 10;
             padding-top: env(safe-area-inset-top, 0px);
-            background: rgba(255, 255, 255, 0.66);
-            -webkit-backdrop-filter: blur(26px) saturate(185%);
-            backdrop-filter: blur(26px) saturate(185%);
-            border-bottom: 0.5px solid rgba(15, 23, 42, 0.12);
+            /* Más opaca arriba (legibilidad de la barra de estado) y más transparente abajo,
+               para que se vea el texto desenfocado que pasa por debajo */
+            background: linear-gradient(to bottom, rgba(255, 255, 255, 0.66), rgba(255, 255, 255, 0.2));
+            -webkit-backdrop-filter: blur(6px) saturate(190%);
+            backdrop-filter: blur(6px) saturate(190%);
+            border-bottom: 0.5px solid rgba(15, 23, 42, 0.05);
+        }
+
+        /* Borde inferior difuminado (como el "scroll edge" de iOS): el desenfoque se va
+           apagando en lugar de cortarse en una línea. Es un elemento aparte, no hijo de la
+           barra: un backdrop-filter dentro de otro solo vería el interior de la barra. */
+        .bar-fade {
+            position: fixed;
+            left: 0;
+            right: 0;
+            top: var(--bar-h);
+            height: 16px;
+            z-index: 9;
+            pointer-events: none;
+            background: linear-gradient(to bottom, rgba(255, 255, 255, 0.25), rgba(255, 255, 255, 0));
+            -webkit-backdrop-filter: blur(4px);
+            backdrop-filter: blur(4px);
+            -webkit-mask-image: linear-gradient(to bottom, #000, transparent);
+            mask-image: linear-gradient(to bottom, #000, transparent);
         }
 
         @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
             .bar { background: rgba(255, 255, 255, 0.97); }
+            .bar-fade { display: none; }
         }
 
         .bar-row {
@@ -299,7 +320,7 @@
         }
 
         #output {
-            padding: calc(var(--bar-h) + 16px) var(--padR) calc(48px + env(safe-area-inset-bottom, 0px)) var(--padL);
+            padding: calc(var(--bar-h) + 24px) var(--padR) calc(48px + env(safe-area-inset-bottom, 0px)) var(--padL);
             resize: none;
             outline: none;
             color: var(--text);
@@ -317,7 +338,7 @@
         /* Vista previa: el texto se centra con un ancho cómodo de lectura */
         #preview {
             --measure: 820px;
-            padding-top: calc(var(--bar-h) + 16px);
+            padding-top: calc(var(--bar-h) + 24px);
             padding-bottom: calc(48px + env(safe-area-inset-bottom, 0px));
             padding-left: max(var(--padL), calc((100% - var(--measure)) / 2));
             padding-right: max(var(--padR), calc((100% - var(--measure)) / 2));
@@ -676,6 +697,7 @@
     </div>
 
     <!-- Barra superior de vidrio: archivo, acciones y el interruptor Código / Vista previa -->
+    <div class="bar-fade" aria-hidden="true"></div>
     <header class="bar">
         <div class="bar-row">
             <button class="logo" id="logoBtn" type="button" aria-label="Acerca de, instalar y créditos">
