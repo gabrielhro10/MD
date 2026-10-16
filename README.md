@@ -11,6 +11,7 @@ Los archivos se procesan localmente en el navegador; no se envían a ningún ser
 
 ## Uso
 
+<<<<<<< HEAD
 Abre la página publicada en <https://gabrielhro10.github.io/MD/>, o sirve esta carpeta con GitHub Pages (**Settings → Pages → Deploy from a branch → `main` / root**).
 
 Para probarla en local hace falta un servidor (el service worker no funciona abriendo `index.html` como archivo), por ejemplo `python -m http.server` y abrir <http://localhost:8000>.
@@ -37,6 +38,9 @@ Al publicar cambios en `index.html`, `manifest.webmanifest` o los iconos, sube `
 ## Icono
 
 El icono (`icons/`) se dibuja en [icons/icon.svg](icons/icon.svg). Los PNG (192, 512, maskable 512 y `apple-touch-icon` de 180) se exportan de ese SVG.
+=======
+Necesita conexión a internet: las librerías se cargan desde CDN, y el OCR descarga el modelo de idioma español la primera vez.
+>>>>>>> fb2a4c29db797db3b24d657cf8f597d65cfb8e73
 
 ## Créditos
 
