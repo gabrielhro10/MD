@@ -4,7 +4,7 @@
 //  - Las librerías del CDN llevan la versión en la URL, así que se guardan una vez y no
 //    caducan: viven en su propia caché para no volver a bajar el OCR (varios MB) en cada
 //    versión del shell.
-const SHELL_VERSION = 'v1';
+const SHELL_VERSION = 'v2';
 const SHELL_CACHE = `md-shell-${SHELL_VERSION}`;
 const LIB_CACHE = 'md-libs';
 
@@ -71,7 +71,7 @@ self.addEventListener('fetch', (event) => {
             ? networkFirst(request, event)
             : staleWhileRevalidate(request, event));
     }
-    // Resto (p. ej. el modelo de idioma de Tesseract): lo gestiona el navegador.
+    // Resto: lo gestiona el navegador.
 });
 
 // Siempre se pide con mode 'cors': una respuesta opaca (<script> sin crossorigin o

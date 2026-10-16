@@ -32,13 +32,23 @@
         :root {
             --primary: #2563eb;
             --primary-hover: #1d4ed8;
-            --bg: #f8fafc;
-            --card-bg: #ffffff;
             --text: #1e293b;
+            --ink: #0f172a;
             --muted: #64748b;
             --border: #e2e8f0;
+            --paper: #ffffff;
             --radius: 10px;
-            --tap: 44px; /* tamaño mínimo táctil recomendado por Apple */
+            --row: 56px;                 /* alto de la fila de la barra superior */
+            --btn: 36px;                 /* alto de los botones de la barra */
+            --padL: max(18px, env(safe-area-inset-left, 0px));
+            --padR: max(18px, env(safe-area-inset-right, 0px));
+            /* La barra de vidrio cubre también la zona de la barra de estado */
+            --bar-h: calc(env(safe-area-inset-top, 0px) + var(--row));
+        }
+
+        /* Dedos en lugar de puntero: botones algo más grandes */
+        @media (pointer: coarse) {
+            :root { --btn: 40px; }
         }
 
         *, *::before, *::after {
@@ -53,179 +63,340 @@
             -webkit-text-size-adjust: 100%;
         }
 
+        /* Fondo blanco como la barra: Safari 26+ tiñe la barra de estado a partir del fondo de la página */
         html, body {
             height: 100%;
             margin: 0;
-        }
-
-        /* La página ocupa exactamente la pantalla; solo desplazan los paneles */
-        body {
-            font-family: system-ui, -apple-system, sans-serif;
-            background-color: var(--bg);
+            overflow: hidden;
+            background: var(--paper);
             color: var(--text);
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-            height: 100dvh;
+            font-family: system-ui, -apple-system, sans-serif;
             overscroll-behavior: none;
             -webkit-tap-highlight-color: transparent;
         }
 
-        /* ---- Encabezado ---- */
-        .topbar {
-            background: var(--card-bg);
-            border-bottom: 1px solid var(--border);
-            padding: 0.5rem max(1rem, env(safe-area-inset-right)) 0.5rem max(1rem, env(safe-area-inset-left));
-            padding-top: max(0.5rem, env(safe-area-inset-top));
+        /* La app ocupa exactamente la pantalla; texto y visor llegan hasta los bordes */
+        .app {
+            position: fixed;
+            inset: 0;
         }
 
-        .topbar-inner {
+        /* ---- Barra superior de vidrio ---- */
+        .bar {
+            position: fixed;
+            inset: 0 0 auto 0;
+            z-index: 10;
+            padding-top: env(safe-area-inset-top, 0px);
+            background: rgba(255, 255, 255, 0.66);
+            -webkit-backdrop-filter: blur(26px) saturate(185%);
+            backdrop-filter: blur(26px) saturate(185%);
+            border-bottom: 0.5px solid rgba(15, 23, 42, 0.12);
+        }
+
+        @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+            .bar { background: rgba(255, 255, 255, 0.97); }
+        }
+
+        .bar-row {
+            height: var(--row);
             display: flex;
             align-items: center;
-            gap: 0.5rem;
-            max-width: 1600px;
-            margin: 0 auto;
-            min-height: var(--tap);
+            gap: 10px;
+            padding: 0 var(--padR) 0 var(--padL);
         }
 
-        .brand {
-            display: flex;
-            align-items: center;
-            gap: 0.65rem;
-            min-width: 0;
-            flex: 1;
-        }
-
-        .brand img {
-            width: 32px;
-            height: 32px;
-            border-radius: 8px;
+        .logo {
             flex: none;
+            width: 30px;
+            height: 30px;
+            padding: 0;
+            border: 0;
+            border-radius: 8px;
+            background: none;
+            cursor: pointer;
+            touch-action: manipulation;
         }
 
-        h1 {
-            margin: 0;
-            font-size: 1.1rem;
+        .logo img {
+            display: block;
+            width: 30px;
+            height: 30px;
+        }
+
+        .who {
+            flex: 1;
+            min-width: 0;
             line-height: 1.2;
+        }
+
+        .who b, .who small {
+            display: block;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
 
-        .tagline {
+        .who b {
+            font-size: 0.95rem;
+        }
+
+        .who small {
+            margin-top: 1px;
+            font-size: 0.75rem;
             color: var(--muted);
-            font-size: 0.8rem;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
         }
 
-        /* ---- Botones ---- */
+        .actions {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
         .btn {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            gap: 0.4rem;
-            background-color: var(--primary);
-            color: #fff;
-            border: 1px solid transparent;
-            min-height: var(--tap);
-            padding: 0 1.1rem;
-            border-radius: var(--radius);
+            gap: 6px;
+            flex: none;
+            height: var(--btn);
+            min-width: var(--btn);
+            padding: 0;
+            border: 0;
+            border-radius: 99px;
+            background: rgba(15, 23, 42, 0.06);
+            color: var(--text);
             font: inherit;
-            font-size: 0.95rem;
+            font-size: 0.88rem;
             font-weight: 600;
             cursor: pointer;
             touch-action: manipulation;
             transition: background-color 0.15s, transform 0.05s;
         }
 
+        .btn svg {
+            width: 19px;
+            height: 19px;
+            flex: none;
+        }
+
+        .btn .label {
+            display: none;
+        }
+
         .btn:active:not(:disabled) {
-            transform: scale(0.97);
-        }
-
-        .btn.secondary {
-            background-color: #475569;
-        }
-
-        .btn.ghost {
-            background-color: transparent;
-            color: var(--text);
-            border-color: var(--border);
+            transform: scale(0.96);
         }
 
         .btn:disabled {
-            background-color: #cbd5e1;
-            color: #fff;
+            opacity: 0.38;
             cursor: not-allowed;
         }
 
-        .btn svg {
-            width: 20px;
-            height: 20px;
-            flex: none;
+        .btn.tint {
+            background: rgba(37, 99, 235, 0.14);
+            color: var(--primary-hover);
+        }
+
+        .btn.solid {
+            background: var(--primary);
+            color: #fff;
         }
 
         /* El hover solo en dispositivos con puntero: en táctil se queda "pegado" tras tocar */
         @media (hover: hover) {
-            .btn:hover:not(:disabled) { background-color: var(--primary-hover); }
-            .btn.secondary:hover:not(:disabled) { background-color: #334155; }
-            .btn.ghost:hover:not(:disabled) { background-color: #f1f5f9; }
+            .btn:hover:not(:disabled) { background-color: rgba(15, 23, 42, 0.12); }
+            .btn.tint:hover:not(:disabled) { background-color: rgba(37, 99, 235, 0.22); }
+            .btn.solid:hover:not(:disabled) { background-color: var(--primary-hover); }
         }
 
         :focus-visible {
-            outline: 3px solid #93c5fd;
+            outline: 3px solid rgba(37, 99, 235, 0.55);
             outline-offset: 2px;
         }
 
-        /* ---- Contenido ---- */
-        .app {
-            flex: 1;
-            min-height: 0;
-            display: flex;
-            flex-direction: column;
-            gap: 0.75rem;
+        /* Con sitio (iPad vertical en adelante) los botones llevan texto; en teléfono, solo icono */
+        @media (min-width: 760px) {
+            .actions .btn, .toggle { padding: 0 14px; }
+            .btn .label { display: inline; }
+            .toggle { min-width: 9.5rem; }
+            .open { padding: 0; }
+            .open .label { display: none; }
+        }
+
+        @media (min-width: 1000px) {
+            .open { padding: 0 14px; }
+            .open .label { display: inline; }
+        }
+
+        /* Interruptor Código / Vista previa: un solo botón que muestra a qué cambia */
+        .toggle .to-code, .toggle .to-preview {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .app[data-view="code"] .toggle .to-code,
+        .app[data-view="preview"] .toggle .to-preview {
+            display: none;
+        }
+
+        /* Qué se ve de la barra según el estado */
+        .app[data-state="empty"] :is(.open, .actions, .toggle),
+        .app[data-state="busy"] .open,
+        .app[data-state="error"] :is(.actions, .toggle) {
+            display: none;
+        }
+
+        /* Progreso: línea fina en el borde inferior de la barra */
+        .progress {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: -0.5px;
+            height: 3px;
+            overflow: hidden;
+        }
+
+        .progress > span {
+            display: block;
+            height: 100%;
+            width: 0;
+            background: var(--primary);
+            border-radius: 0 2px 2px 0;
+            transition: width 0.2s ease;
+        }
+
+        .progress.indeterminate > span {
+            width: 35%;
+            transition: none;
+            animation: bar-slide 1.1s ease-in-out infinite;
+        }
+
+        @keyframes bar-slide {
+            from { transform: translateX(-100%); }
+            to { transform: translateX(300%); }
+        }
+
+        /* ---- Editor y visor: de borde a borde, el contenido pasa bajo la barra de vidrio ---- */
+        #output, #preview {
+            display: none;
+            position: absolute;
+            inset: 0;
             width: 100%;
-            max-width: 1600px;
-            margin: 0 auto;
-            padding: 0.75rem max(1rem, env(safe-area-inset-right)) max(0.75rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
+            height: 100%;
+            margin: 0;
+            border: 0;
+            border-radius: 0;
+            background: var(--paper);
             overflow-y: auto;
+            overscroll-behavior: contain;
+            -webkit-overflow-scrolling: touch;
         }
 
-        .hint {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            background: #eff6ff;
-            border: 1px solid #bfdbfe;
-            color: #1e3a8a;
-            border-radius: var(--radius);
-            padding: 0.25rem 0.25rem 0.25rem 0.9rem;
+        .app[data-state="ready"][data-view="code"] #output,
+        .app[data-state="ready"][data-view="preview"] #preview {
+            display: block;
+        }
+
+        #output {
+            padding: calc(var(--bar-h) + 16px) var(--padR) calc(48px + env(safe-area-inset-bottom, 0px)) var(--padL);
+            resize: none;
+            outline: none;
+            color: var(--text);
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
             font-size: 0.9rem;
+            line-height: 1.6;
+            tab-size: 4;
         }
 
-        .hint .btn {
-            margin-left: auto;
-            min-width: var(--tap);
-            padding: 0;
-            font-size: 1.4rem;
-            line-height: 1;
+        /* Con menos de 16 px, iOS amplía la página al tocar el campo para escribir */
+        @media (pointer: coarse) {
+            #output { font-size: 16px; }
         }
 
-        /* Zona de archivo: grande y centrada al inicio; barra fina cuando ya hay archivo */
-        .dropzone {
-            flex: 1;
-            min-height: 200px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 0.75rem;
+        /* Vista previa: el texto se centra con un ancho cómodo de lectura */
+        #preview {
+            --measure: 820px;
+            padding-top: calc(var(--bar-h) + 16px);
+            padding-bottom: calc(48px + env(safe-area-inset-bottom, 0px));
+            padding-left: max(var(--padL), calc((100% - var(--measure)) / 2));
+            padding-right: max(var(--padR), calc((100% - var(--measure)) / 2));
+            color: var(--ink);
+            line-height: 1.65;
+            overflow-wrap: break-word;
+        }
+
+        #preview > :first-child {
+            margin-top: 0;
+        }
+
+        /* Estilos CSS para renderizar correctamente el Markdown en el Visor */
+        #preview h1, #preview h2, #preview h3 {
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 0.3em;
+            margin-top: 1.5em;
+        }
+
+        #preview code {
+            background-color: #f1f5f9;
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.88em;
+        }
+
+        #preview pre {
+            background-color: #f1f5f9;
+            padding: 1rem;
+            border-radius: 6px;
+            overflow-x: auto;
+        }
+
+        #preview blockquote {
+            border-left: 4px solid var(--primary);
+            margin: 0;
+            padding-left: 1rem;
+            color: var(--muted);
+        }
+
+        #preview table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1rem 0;
+        }
+
+        #preview th, #preview td {
+            border: 1px solid var(--border);
+            padding: 0.5rem;
+            text-align: left;
+        }
+
+        #preview th {
+            background-color: #f1f5f9;
+        }
+
+        /* ---- Estados sin documento: inicio, conversión en curso y error ---- */
+        .center {
+            display: none;
+            position: absolute;
+            inset: calc(var(--bar-h) + 14px) var(--padR) calc(16px + env(safe-area-inset-bottom, 0px)) var(--padL);
+            place-items: center;
+            align-content: center;
+            gap: 10px;
+            padding: 24px;
+            border-radius: 20px;
             text-align: center;
+        }
+
+        .app[data-state="empty"] .dropzone,
+        .app[data-state="busy"] .busy,
+        .app[data-state="error"] .failed {
+            display: grid;
+        }
+
+        .dropzone {
             border: 2px dashed #cbd5e1;
-            border-radius: 14px;
-            background: var(--card-bg);
-            padding: 2rem 1.5rem;
+            background: var(--paper);
             cursor: pointer;
             transition: border-color 0.2s, background-color 0.2s;
             -webkit-user-select: none;
@@ -248,7 +419,7 @@
             width: 56px;
             height: 56px;
             color: var(--primary);
-            flex: none;
+            margin: 0 auto 0.6rem;
         }
 
         .dz-title {
@@ -257,9 +428,9 @@
         }
 
         .dz-sub {
+            margin-top: 0.2rem;
             color: var(--muted);
             font-size: 0.9rem;
-            margin-top: 0.15rem;
         }
 
         .dz-formats {
@@ -279,62 +450,6 @@
             padding: 0.2rem 0.65rem;
         }
 
-        .dz-file {
-            display: none;
-        }
-
-        .has-file .dropzone {
-            flex: none;
-            flex-direction: row;
-            justify-content: flex-start;
-            min-height: var(--tap);
-            padding: 0.4rem 0.9rem;
-            gap: 0.75rem;
-            border-style: solid;
-            border-width: 1px;
-            border-color: var(--border);
-            border-radius: var(--radius);
-            text-align: left;
-        }
-
-        .has-file .dz-icon {
-            width: 24px;
-            height: 24px;
-        }
-
-        .has-file .dz-empty,
-        .has-file .hint {
-            display: none;
-        }
-
-        .has-file .dz-file {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            min-width: 0;
-            flex: 1;
-        }
-
-        .dz-file .name {
-            font-weight: 600;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        .dz-file .change {
-            margin-left: auto;
-            color: var(--primary);
-            font-size: 0.9rem;
-            font-weight: 600;
-            white-space: nowrap;
-        }
-
-        .busy .dropzone {
-            opacity: 0.6;
-            pointer-events: none;
-        }
-
         /* Texto según el tipo de puntero: en iPad no se "hace clic" ni se arrastra */
         .only-touch {
             display: none;
@@ -345,214 +460,55 @@
             .only-touch { display: inline; }
         }
 
-        /* Sin archivo no hay nada que mostrar salvo la zona de archivo */
-        .app:not(.has-file) .statusbar,
-        .app:not(.has-file) .toolbar,
-        .app:not(.has-file) .panes {
-            display: none;
-        }
-
-        /* ---- Estado y progreso ---- */
-        .statusbar {
-            display: flex;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 0.25rem 0.75rem;
-            min-height: 1.5rem;
-        }
-
-        #statusText {
-            font-size: 0.9rem;
-            font-weight: 500;
-            color: var(--primary);
-        }
-
-        .statusbar[data-kind="ok"] #statusText { color: #15803d; }
-        .statusbar[data-kind="error"] #statusText { color: #b91c1c; }
-
-        .bar {
-            flex: 1;
-            min-width: 120px;
-            max-width: 360px;
-            height: 8px;
-            border-radius: 99px;
-            background: var(--border);
-            overflow: hidden;
-        }
-
-        .bar > span {
+        .busy b, .failed b {
             display: block;
-            height: 100%;
-            width: 0;
-            background: var(--primary);
-            border-radius: inherit;
-            transition: width 0.25s ease;
+            font-size: 1.1rem;
+            overflow-wrap: anywhere;
         }
 
-        .bar.indeterminate > span {
-            width: 35%;
-            transition: none;
-            animation: bar-slide 1.1s ease-in-out infinite;
+        .busy small, .failed small {
+            display: block;
+            margin-top: 2px;
+            color: var(--muted);
+            font-size: 0.9rem;
+            overflow-wrap: anywhere;
         }
 
-        @keyframes bar-slide {
-            from { transform: translateX(-100%); }
-            to { transform: translateX(300%); }
+        .failed small {
+            color: #b91c1c;
+        }
+
+        .failed .btn {
+            margin-top: 12px;
+            padding: 0 18px;
+            font-size: 0.95rem;
+        }
+
+        .skeleton {
+            display: grid;
+            gap: 10px;
+            width: min(520px, 80vw);
+            margin: 18px auto 0;
+        }
+
+        .skeleton i {
+            display: block;
+            height: 11px;
+            border-radius: 6px;
+            background: linear-gradient(90deg, #e8edf4, #f4f7fb, #e8edf4);
+            background-size: 200% 100%;
+            animation: shimmer 1.4s linear infinite;
+        }
+
+        .skeleton i:nth-child(3n) { width: 70%; }
+
+        @keyframes shimmer {
+            to { background-position: -200% 0; }
         }
 
         @media (prefers-reduced-motion: reduce) {
-            .bar.indeterminate > span { animation: none; width: 100%; opacity: 0.5; }
-        }
-
-        /* ---- Acciones ---- */
-        .toolbar {
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .segmented {
-            display: inline-flex;
-            gap: 3px;
-            margin-left: auto;
-            padding: 3px;
-            background: #e2e8f0;
-            border-radius: var(--radius);
-        }
-
-        .segmented button {
-            min-height: calc(var(--tap) - 6px);
-            padding: 0 1rem;
-            border: 0;
-            border-radius: 8px;
-            background: transparent;
-            color: var(--text);
-            font: inherit;
-            font-size: 0.95rem;
-            font-weight: 600;
-            cursor: pointer;
-            touch-action: manipulation;
-        }
-
-        .segmented button[aria-pressed="true"] {
-            background: var(--card-bg);
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
-        }
-
-        /* ---- Editor y visor: ocupan todo el alto disponible ---- */
-        .panes {
-            flex: 1;
-            min-height: 220px;
-            display: grid;
-            grid-template-columns: minmax(0, 1fr);
-            grid-template-rows: minmax(0, 1fr);
-            gap: 0.75rem;
-        }
-
-        .panes[data-view="code"] #preview { display: none; }
-        .panes[data-view="preview"] #output { display: none; }
-
-        textarea, .preview-box {
-            width: 100%;
-            height: 100%;
-            min-height: 0;
-            padding: 1rem;
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            overflow-y: auto;
-            overscroll-behavior: contain;
-            -webkit-overflow-scrolling: touch;
-        }
-
-        textarea {
-            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-            font-size: 0.9rem;
-            line-height: 1.5;
-            resize: none;
-            background-color: var(--bg);
-            color: var(--text);
-        }
-
-        /* Con menos de 16 px, iOS amplía la página al tocar el campo para escribir */
-        @media (pointer: coarse) {
-            textarea { font-size: 16px; }
-        }
-
-        /* Estilos CSS para renderizar correctamente el Markdown en el Visor */
-        .preview-box {
-            background-color: #ffffff;
-            color: #0f172a;
-            line-height: 1.6;
-            overflow-wrap: break-word;
-        }
-
-        .preview-box:empty::before {
-            content: "La vista previa aparecerá aquí...";
-            color: var(--muted);
-        }
-
-        .preview-box > :first-child {
-            margin-top: 0;
-        }
-
-        .preview-box h1, .preview-box h2, .preview-box h3 {
-            border-bottom: 1px solid var(--border);
-            padding-bottom: 0.3em;
-            margin-top: 1.5em;
-        }
-
-        .preview-box code {
-            background-color: #f1f5f9;
-            padding: 0.2rem 0.4rem;
-            border-radius: 4px;
-            font-family: monospace;
-            font-size: 0.88em;
-        }
-
-        .preview-box pre {
-            background-color: #f1f5f9;
-            padding: 1rem;
-            border-radius: 6px;
-            overflow-x: auto;
-        }
-
-        .preview-box blockquote {
-            border-left: 4px solid var(--primary);
-            margin: 0;
-            padding-left: 1rem;
-            color: var(--muted);
-        }
-
-        .preview-box table {
-            border-collapse: collapse;
-            width: 100%;
-            margin: 1rem 0;
-        }
-
-        .preview-box th, .preview-box td {
-            border: 1px solid var(--border);
-            padding: 0.5rem;
-            text-align: left;
-        }
-
-        .preview-box th {
-            background-color: #f1f5f9;
-        }
-
-        /* Pantallas anchas (iPad horizontal, escritorio): código y vista previa lado a lado */
-        @media (min-width: 900px) {
-            .panes { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
-            .panes[data-view] #output,
-            .panes[data-view] #preview { display: block; }
-            .segmented { display: none; }
-        }
-
-        @media (max-width: 700px) {
-            h1 { font-size: 1rem; white-space: normal; }
-            .tagline { display: none; }
-            .btn.about .label { display: none; }
-            .btn.about { padding: 0; min-width: var(--tap); }
+            .skeleton i { animation: none; }
+            .progress.indeterminate > span { animation: none; width: 100%; opacity: 0.5; }
         }
 
         /* ---- Aviso breve (reemplaza al alert) ---- */
@@ -570,7 +526,7 @@
             opacity: 0;
             pointer-events: none;
             transition: opacity 0.2s, transform 0.2s;
-            z-index: 10;
+            z-index: 30;
         }
 
         .toast.show {
@@ -591,7 +547,9 @@
         }
 
         dialog::backdrop {
-            background: rgba(15, 23, 42, 0.5);
+            background: rgba(15, 23, 42, 0.4);
+            -webkit-backdrop-filter: blur(6px);
+            backdrop-filter: blur(6px);
         }
 
         .dialog-body {
@@ -615,6 +573,28 @@
             color: var(--muted);
         }
 
+        dialog a {
+            color: var(--primary);
+        }
+
+        .install {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin: 14px 0 4px;
+            padding: 10px 12px;
+            border-radius: 12px;
+            background: #eff6ff;
+            color: #1e3a8a;
+            font-size: 0.88rem;
+            line-height: 1.4;
+        }
+
+        .install .btn {
+            padding: 0 16px;
+        }
+
         .libs {
             width: 100%;
             border-collapse: collapse;
@@ -633,45 +613,30 @@
             font-weight: 600;
         }
 
-        dialog a {
-            color: var(--primary);
-        }
-
         .dialog-actions {
             display: flex;
             justify-content: flex-end;
             margin-top: 1.25rem;
         }
+
+        .dialog-actions .btn {
+            padding: 0 22px;
+            height: 44px;
+        }
     </style>
 </head>
 <body>
 
-<header class="topbar">
-    <div class="topbar-inner">
-        <div class="brand">
-            <img src="icons/icon.svg" alt="" width="32" height="32">
-            <div style="min-width: 0;">
-                <h1>Convertidor y Visor Markdown</h1>
-                <div class="tagline">PDF, Word, HTML, texto e imágenes con OCR en español</div>
-            </div>
-        </div>
-        <button class="btn" id="installBtn" type="button" hidden>Instalar</button>
-        <button class="btn ghost about" id="aboutBtn" type="button" aria-label="Acerca de">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
-            <span class="label">Acerca de</span>
-        </button>
-    </div>
-</header>
+<div class="app" id="app" data-state="empty" data-view="code">
 
-<main class="app" id="app">
-    <div class="hint" id="iosHint" hidden>
-        <span>Para instalarla: toca <strong>Compartir</strong> y luego <strong>«Añadir a pantalla de inicio»</strong>.</span>
-        <button class="btn ghost" id="iosHintClose" type="button" aria-label="Cerrar aviso">&times;</button>
-    </div>
+    <!-- Texto para copiar (Código) y Vista previa: ocupan toda la pantalla, uno a la vez -->
+    <textarea id="output" spellcheck="false" aria-label="Markdown" placeholder="El resultado en Markdown aparecerá aquí..."></textarea>
+    <div id="preview" aria-label="Vista previa"></div>
 
-    <label class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Elegir un archivo para convertir">
-        <svg class="dz-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M12 17v-6M9.5 13.5 12 11l2.5 2.5"/></svg>
-        <div class="dz-empty">
+    <!-- Inicio: zona de archivo a pantalla completa -->
+    <label class="center dropzone" id="dropzone" for="fileInput" tabindex="0" role="button" aria-label="Elegir un archivo para convertir">
+        <div>
+            <svg class="dz-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M12 17v-6M9.5 13.5 12 11l2.5 2.5"/></svg>
             <div class="dz-title">
                 <span class="only-mouse">Arrastra tu archivo aquí</span>
                 <span class="only-touch">Toca para elegir un archivo</span>
@@ -689,42 +654,84 @@
             </div>
             <div class="dz-sub">Se procesa en este dispositivo; no se sube a ningún servidor.</div>
         </div>
-        <div class="dz-file">
-            <span class="name" id="fileName"></span>
-            <span class="change">Cambiar archivo</span>
-        </div>
-        <input type="file" id="fileInput" hidden accept=".pdf,.docx,.txt,.html,.htm,.rtf,.md,.png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp">
     </label>
+    <input type="file" id="fileInput" hidden accept=".pdf,.docx,.txt,.html,.htm,.rtf,.md,.png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp">
 
-    <div class="statusbar" id="statusbar" hidden>
-        <div id="statusText" role="status" aria-live="polite"></div>
-        <div class="bar" id="progressBar" role="progressbar" aria-label="Progreso de la conversión" aria-valuemin="0" aria-valuemax="100" hidden><span id="progressFill"></span></div>
-    </div>
-
-    <div class="toolbar">
-        <button class="btn" id="copyBtn" type="button" disabled onclick="copyToClipboard()">Copiar</button>
-        <button class="btn" id="downloadBtn" type="button" disabled onclick="downloadMd()">Descargar .md</button>
-        <button class="btn secondary" id="shareBtn" type="button" hidden disabled onclick="shareMd()">Compartir</button>
-        <div class="segmented" role="group" aria-label="Vista">
-            <button id="viewCode" type="button" aria-pressed="true" onclick="setView('code')">Código</button>
-            <button id="viewPreview" type="button" aria-pressed="false" onclick="setView('preview')">Vista previa</button>
+    <!-- Conversión en curso -->
+    <div class="center busy" role="status" aria-live="polite">
+        <div>
+            <b id="busyName">Convirtiendo...</b>
+            <small id="busyText"></small>
+            <div class="skeleton" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
         </div>
     </div>
 
-    <div class="panes" id="panes" data-view="code">
-        <!-- Área de Código -->
-        <textarea id="output" spellcheck="false" aria-label="Markdown" placeholder="El resultado en Markdown aparecerá aquí..."></textarea>
-        <!-- Área de Visor MD -->
-        <div id="preview" class="preview-box" aria-label="Vista previa"></div>
+    <!-- Error -->
+    <div class="center failed" role="alert">
+        <div>
+            <b>No se pudo convertir el archivo</b>
+            <small id="errorText"></small>
+            <button class="btn solid" id="errorOpen" type="button">Elegir otro archivo</button>
+        </div>
     </div>
-</main>
+
+    <!-- Barra superior de vidrio: archivo, acciones y el interruptor Código / Vista previa -->
+    <header class="bar">
+        <div class="bar-row">
+            <button class="logo" id="logoBtn" type="button" aria-label="Acerca de, instalar y créditos">
+                <img src="icons/icon.svg" alt="" width="30" height="30">
+            </button>
+            <div class="who">
+                <b id="whoName">Convertidor y Visor Markdown</b>
+                <small id="whoMeta">PDF, Word, HTML, texto e imágenes con OCR en español</small>
+            </div>
+            <button class="btn open" id="openBtn" type="button" aria-label="Abrir otro archivo">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M12 11v5M9.5 13.5h5"/></svg>
+                <span class="label">Abrir</span>
+            </button>
+            <div class="actions">
+                <button class="btn tint" id="copyBtn" type="button" disabled aria-label="Copiar" onclick="copyToClipboard()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2.5"/><path d="M5 15V6.5A1.5 1.5 0 0 1 6.5 5H15"/></svg>
+                    <span class="label">Copiar</span>
+                </button>
+                <button class="btn" id="downloadBtn" type="button" disabled aria-label="Descargar .md" onclick="downloadMd()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7.5 11 12 15.5 16.5 11M5 19.5h14"/></svg>
+                    <span class="label">Descargar</span>
+                </button>
+                <button class="btn" id="shareBtn" type="button" hidden disabled aria-label="Compartir o guardar en Archivos" onclick="shareMd()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V4M8 8l4-4 4 4"/><path d="M6.5 11H6a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5a2 2 0 0 0-2-2h-.5"/></svg>
+                    <span class="label">Compartir</span>
+                </button>
+            </div>
+            <button class="btn solid toggle" id="viewToggle" type="button" disabled aria-label="Cambiar a vista previa">
+                <span class="to-preview">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
+                    <span class="label">Vista previa</span>
+                </span>
+                <span class="to-code">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.5 7 3.5 12l5 5M15.5 7l5 5-5 5"/></svg>
+                    <span class="label">Código</span>
+                </span>
+            </button>
+        </div>
+        <div class="progress" id="progressBar" role="progressbar" aria-label="Progreso de la conversión" aria-valuemin="0" aria-valuemax="100" hidden><span id="progressFill"></span></div>
+    </header>
+</div>
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <dialog id="aboutDialog" aria-labelledby="aboutTitle">
     <div class="dialog-body">
-        <h2 id="aboutTitle">Acerca de</h2>
+        <h2 id="aboutTitle">Convertidor y Visor Markdown</h2>
         <p>Convierte PDF (con texto o escaneados), Word, HTML, texto e imágenes a Markdown. El OCR usa español y conserva las tildes. Los archivos se procesan en tu navegador; no se suben a ningún servidor.</p>
+
+        <div class="install" id="installBox" hidden>
+            <span>Instala la app para usarla en pantalla completa y sin conexión.</span>
+            <button class="btn solid" id="installBtn" type="button">Instalar</button>
+        </div>
+        <div class="install" id="iosBox" hidden>
+            <span>Para instalarla: toca <strong>Compartir</strong> y luego <strong>«Añadir a pantalla de inicio»</strong>.</span>
+        </div>
 
         <h3>Hecho con software de código abierto</h3>
         <table class="libs">
@@ -741,7 +748,7 @@
         <p>El código de esta aplicación se distribuye bajo licencia MIT. <a href="https://github.com/gabrielhro10/MD" target="_blank" rel="noopener">Ver en GitHub</a></p>
 
         <div class="dialog-actions">
-            <button class="btn" id="aboutClose" type="button">Cerrar</button>
+            <button class="btn solid" id="aboutClose" type="button">Cerrar</button>
         </div>
     </div>
 </dialog>
@@ -762,19 +769,20 @@
     const app = document.getElementById('app');
     const dropzone = document.getElementById('dropzone');
     const fileInput = document.getElementById('fileInput');
-    const fileNameEl = document.getElementById('fileName');
+    const whoName = document.getElementById('whoName');
+    const whoMeta = document.getElementById('whoMeta');
+    const busyName = document.getElementById('busyName');
+    const busyText = document.getElementById('busyText');
+    const errorText = document.getElementById('errorText');
     const output = document.getElementById('output');
     const preview = document.getElementById('preview');
-    const panes = document.getElementById('panes');
-    const statusbar = document.getElementById('statusbar');
-    const statusText = document.getElementById('statusText');
     const progressBar = document.getElementById('progressBar');
     const progressFill = document.getElementById('progressFill');
+    const openBtn = document.getElementById('openBtn');
     const copyBtn = document.getElementById('copyBtn');
     const downloadBtn = document.getElementById('downloadBtn');
     const shareBtn = document.getElementById('shareBtn');
-    const viewCodeBtn = document.getElementById('viewCode');
-    const viewPreviewBtn = document.getElementById('viewPreview');
+    const viewToggle = document.getElementById('viewToggle');
     const toastEl = document.getElementById('toast');
 
     let currentFileName = "documento";
@@ -820,21 +828,25 @@
         }
     });
 
+    openBtn.addEventListener('click', () => fileInput.click());
+    document.getElementById('errorOpen').addEventListener('click', () => fileInput.click());
+
     async function handleFile(file) {
         if (isBusy) {
             showToast("Espera a que termine la conversión actual");
             return;
         }
         isBusy = true;
-        app.classList.add('busy');
+        hideToast();
 
         currentFileName = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
         const extension = file.name.split('.').pop().toLowerCase();
 
         output.value = "";
         preview.innerHTML = "";
-        fileNameEl.textContent = file.name;
-        app.classList.add('has-file');
+        whoName.textContent = file.name;
+        busyName.textContent = `Convirtiendo ${file.name}`;
+        app.dataset.state = 'busy';
         setStatus("Procesando archivo...", null);
         toggleButtons(false);
 
@@ -856,18 +868,22 @@
             }
 
             output.value = markdown.trim();
-            setStatus("¡Conversión completada con éxito!", undefined, 'ok');
+            output.scrollTop = 0;
+            preview.scrollTop = 0;
+            setStatus(`${extension.toUpperCase()} · convertido a Markdown`);
+            app.dataset.state = 'ready';
             toggleButtons(true);
-            renderPreviewIfVisible();
+            if (currentView === 'preview') renderMarkdown();
+            showToast("¡Conversión completada!");
         } catch (error) {
             console.error(error);
-            setStatus("Error al procesar el archivo: " + error.message, undefined, 'error');
+            errorText.textContent = error.message;
+            setStatus("No se pudo convertir");
+            app.dataset.state = 'error';
         } finally {
             isBusy = false;
-            app.classList.remove('busy');
         }
     }
-
 
     // Procesar Word (.docx)
     async function processDocx(arrayBuffer) {
@@ -1295,13 +1311,12 @@
 
     // ---- Interfaz ----
 
-    // Texto de estado y barra de progreso.
-    // progress: undefined = sin barra, null = indeterminada, número 0–1 = avance.
-    // kind: '' (en curso), 'ok' o 'error'.
-    function setStatus(text, progress, kind = '') {
-        statusText.textContent = text;
-        statusbar.dataset.kind = kind;
-        statusbar.hidden = !text;
+    // Estado de la conversión: texto en la barra y en la pantalla de espera, y línea de
+    // progreso en el borde de la barra.
+    // progress: undefined = sin línea, null = indeterminada, número 0–1 = avance.
+    function setStatus(text, progress) {
+        whoMeta.textContent = text;
+        busyText.textContent = text;
 
         if (progress === undefined) {
             progressBar.hidden = true;
@@ -1326,39 +1341,38 @@
         toastTimer = setTimeout(() => toastEl.classList.remove('show'), 2500);
     }
 
-    // Con 900 px o más se ven código y vista previa a la vez; con menos, uno u otro
-    const wideQuery = window.matchMedia('(min-width: 900px)');
+    function hideToast() {
+        clearTimeout(toastTimer);
+        toastEl.classList.remove('show');
+    }
 
+    // Código ⇄ Vista previa: una sola vista a la vez, para que ocupe toda la pantalla.
+    // Al cambiar se conserva la posición de lectura (proporcional) en el otro panel.
     function setView(view) {
+        const from = currentView === 'code' ? output : preview;
+        const maxFrom = from.scrollHeight - from.clientHeight;
+        const ratio = maxFrom > 0 ? from.scrollTop / maxFrom : 0;
+
         currentView = view;
-        panes.dataset.view = view;
-        viewCodeBtn.setAttribute('aria-pressed', String(view === 'code'));
-        viewPreviewBtn.setAttribute('aria-pressed', String(view === 'preview'));
-        renderPreviewIfVisible();
+        app.dataset.view = view;
+        viewToggle.setAttribute('aria-label', view === 'code' ? 'Cambiar a vista previa' : 'Cambiar a código');
+        if (view === 'preview') renderMarkdown();
+
+        const to = view === 'code' ? output : preview;
+        to.scrollTop = ratio * (to.scrollHeight - to.clientHeight);
     }
 
-    function renderPreviewIfVisible() {
-        if (wideQuery.matches || currentView === 'preview') {
-            renderMarkdown();
-        }
-    }
+    viewToggle.addEventListener('click', () => setView(currentView === 'code' ? 'preview' : 'code'));
 
     function renderMarkdown() {
         preview.innerHTML = marked.parse(output.value || '*No hay contenido disponible*');
     }
 
-    // La vista previa sigue a lo que se edita en el código
-    let renderTimer;
-    output.addEventListener('input', () => {
-        clearTimeout(renderTimer);
-        renderTimer = setTimeout(renderPreviewIfVisible, 200);
-    });
-    wideQuery.addEventListener('change', renderPreviewIfVisible);
-
     function toggleButtons(enabled) {
         copyBtn.disabled = !enabled;
         downloadBtn.disabled = !enabled;
         shareBtn.disabled = !enabled;
+        viewToggle.disabled = !enabled;
     }
 
     async function copyToClipboard() {
@@ -1435,16 +1449,18 @@
 
     shareBtn.hidden = !findShareableFile();
 
-    // ---- Instalación (PWA) ----
+    // ---- Acerca de, instalación y créditos (se abren con el logo) ----
+    const aboutDialog = document.getElementById('aboutDialog');
+    const installBox = document.getElementById('installBox');
     const installBtn = document.getElementById('installBtn');
-    const iosHint = document.getElementById('iosHint');
+    const iosBox = document.getElementById('iosBox');
     let installPrompt = null;
 
     // Chrome, Edge y Android avisan cuando la app se puede instalar
     window.addEventListener('beforeinstallprompt', (e) => {
         e.preventDefault();
         installPrompt = e;
-        installBtn.hidden = false;
+        installBox.hidden = false;
     });
 
     installBtn.addEventListener('click', async () => {
@@ -1452,12 +1468,12 @@
         installPrompt.prompt();
         await installPrompt.userChoice;
         installPrompt = null;
-        installBtn.hidden = true;
+        installBox.hidden = true;
     });
 
     window.addEventListener('appinstalled', () => {
         installPrompt = null;
-        installBtn.hidden = true;
+        installBox.hidden = true;
     });
 
     // Safari en iPhone/iPad no tiene esa API: solo se puede explicar el paso manual.
@@ -1465,24 +1481,11 @@
     const isStandalone = navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
         || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-    let iosHintDismissed = false;
-    try {
-        iosHintDismissed = localStorage.getItem('iosHintDismissed') === '1';
-    } catch (error) {}
-    iosHint.hidden = !(isIOS && !isStandalone && !iosHintDismissed);
+    iosBox.hidden = !(isIOS && !isStandalone);
 
-    document.getElementById('iosHintClose').addEventListener('click', () => {
-        iosHint.hidden = true;
-        try {
-            localStorage.setItem('iosHintDismissed', '1');
-        } catch (error) {}
-    });
-
-    // ---- Acerca de ----
-    const aboutDialog = document.getElementById('aboutDialog');
     const closeAbout = () => aboutDialog.close ? aboutDialog.close() : aboutDialog.removeAttribute('open');
 
-    document.getElementById('aboutBtn').addEventListener('click', () => {
+    document.getElementById('logoBtn').addEventListener('click', () => {
         if (aboutDialog.showModal) aboutDialog.showModal();
         else aboutDialog.setAttribute('open', '');
     });
