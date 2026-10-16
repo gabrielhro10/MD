@@ -2,8 +2,21 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>Convertidor y Visor Markdown (.md)</title>
+    <meta name="description" content="Convierte PDF, Word, HTML, texto e imágenes (con OCR en español) a Markdown, directamente en el navegador.">
+    <meta name="color-scheme" content="light">
+    <meta name="theme-color" content="#ffffff">
+
+    <!-- PWA: instalable y disponible sin conexión (ver manifest.webmanifest y sw.js) -->
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Markdown">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+
     <!-- Mammoth.js para archivos Word (.docx) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
     <!-- PDF.js para archivos PDF -->
@@ -12,8 +25,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/turndown/7.1.2/turndown.min.js"></script>
     <!-- Marked.js para renderizar la vista previa (Visor MD) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
-    <!-- Tesseract.js para OCR en español -->
-    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <!-- Tesseract.js para OCR en español (versión fija: su worker y su núcleo se piden a la misma versión) -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
 
     <style>
         :root {
@@ -22,117 +35,448 @@
             --bg: #f8fafc;
             --card-bg: #ffffff;
             --text: #1e293b;
+            --muted: #64748b;
             --border: #e2e8f0;
+            --radius: 10px;
+            --tap: 44px; /* tamaño mínimo táctil recomendado por Apple */
         }
 
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+
+        [hidden] {
+            display: none !important;
+        }
+
+        html {
+            -webkit-text-size-adjust: 100%;
+        }
+
+        html, body {
+            height: 100%;
+            margin: 0;
+        }
+
+        /* La página ocupa exactamente la pantalla; solo desplazan los paneles */
         body {
             font-family: system-ui, -apple-system, sans-serif;
             background-color: var(--bg);
             color: var(--text);
-            margin: 0;
-            padding: 2rem;
             display: flex;
-            justify-content: center;
+            flex-direction: column;
+            height: 100vh;
+            height: 100dvh;
+            overscroll-behavior: none;
+            -webkit-tap-highlight-color: transparent;
         }
 
-        .container {
-            width: 100%;
-            max-width: 900px;
+        /* ---- Encabezado ---- */
+        .topbar {
             background: var(--card-bg);
-            padding: 2rem;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+            border-bottom: 1px solid var(--border);
+            padding: 0.5rem max(1rem, env(safe-area-inset-right)) 0.5rem max(1rem, env(safe-area-inset-left));
+            padding-top: max(0.5rem, env(safe-area-inset-top));
+        }
+
+        .topbar-inner {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            max-width: 1600px;
+            margin: 0 auto;
+            min-height: var(--tap);
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 0.65rem;
+            min-width: 0;
+            flex: 1;
+        }
+
+        .brand img {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            flex: none;
         }
 
         h1 {
-            margin-top: 0;
-            color: var(--text);
-            font-size: 1.5rem;
+            margin: 0;
+            font-size: 1.1rem;
+            line-height: 1.2;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
-        p {
-            color: #64748b;
+        .tagline {
+            color: var(--muted);
+            font-size: 0.8rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* ---- Botones ---- */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.4rem;
+            background-color: var(--primary);
+            color: #fff;
+            border: 1px solid transparent;
+            min-height: var(--tap);
+            padding: 0 1.1rem;
+            border-radius: var(--radius);
+            font: inherit;
             font-size: 0.95rem;
-        }
-
-        .dropzone {
-            border: 2px dashed var(--border);
-            border-radius: 8px;
-            padding: 2.5rem;
-            text-align: center;
-            background: #f1f5f9;
+            font-weight: 600;
             cursor: pointer;
-            transition: all 0.2s ease;
-            margin: 1.5rem 0;
+            touch-action: manipulation;
+            transition: background-color 0.15s, transform 0.05s;
         }
 
-        .dropzone:hover, .dropzone.dragover {
+        .btn:active:not(:disabled) {
+            transform: scale(0.97);
+        }
+
+        .btn.secondary {
+            background-color: #475569;
+        }
+
+        .btn.ghost {
+            background-color: transparent;
+            color: var(--text);
+            border-color: var(--border);
+        }
+
+        .btn:disabled {
+            background-color: #cbd5e1;
+            color: #fff;
+            cursor: not-allowed;
+        }
+
+        .btn svg {
+            width: 20px;
+            height: 20px;
+            flex: none;
+        }
+
+        /* El hover solo en dispositivos con puntero: en táctil se queda "pegado" tras tocar */
+        @media (hover: hover) {
+            .btn:hover:not(:disabled) { background-color: var(--primary-hover); }
+            .btn.secondary:hover:not(:disabled) { background-color: #334155; }
+            .btn.ghost:hover:not(:disabled) { background-color: #f1f5f9; }
+        }
+
+        :focus-visible {
+            outline: 3px solid #93c5fd;
+            outline-offset: 2px;
+        }
+
+        /* ---- Contenido ---- */
+        .app {
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            width: 100%;
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 0.75rem max(1rem, env(safe-area-inset-right)) max(0.75rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
+            overflow-y: auto;
+        }
+
+        .hint {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            color: #1e3a8a;
+            border-radius: var(--radius);
+            padding: 0.25rem 0.25rem 0.25rem 0.9rem;
+            font-size: 0.9rem;
+        }
+
+        .hint .btn {
+            margin-left: auto;
+            min-width: var(--tap);
+            padding: 0;
+            font-size: 1.4rem;
+            line-height: 1;
+        }
+
+        /* Zona de archivo: grande y centrada al inicio; barra fina cuando ya hay archivo */
+        .dropzone {
+            flex: 1;
+            min-height: 200px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            text-align: center;
+            border: 2px dashed #cbd5e1;
+            border-radius: 14px;
+            background: var(--card-bg);
+            padding: 2rem 1.5rem;
+            cursor: pointer;
+            transition: border-color 0.2s, background-color 0.2s;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        .dropzone.dragover {
             border-color: var(--primary);
             background: #eff6ff;
         }
 
-        .dropzone input {
+        @media (hover: hover) {
+            .dropzone:hover {
+                border-color: var(--primary);
+                background: #eff6ff;
+            }
+        }
+
+        .dz-icon {
+            width: 56px;
+            height: 56px;
+            color: var(--primary);
+            flex: none;
+        }
+
+        .dz-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        .dz-sub {
+            color: var(--muted);
+            font-size: 0.9rem;
+            margin-top: 0.15rem;
+        }
+
+        .dz-formats {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.4rem;
+            justify-content: center;
+            margin: 0.9rem 0 0.6rem;
+        }
+
+        .chip {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--muted);
+            background: #f1f5f9;
+            border-radius: 99px;
+            padding: 0.2rem 0.65rem;
+        }
+
+        .dz-file {
             display: none;
         }
 
-        .controls {
-            display: flex;
+        .has-file .dropzone {
+            flex: none;
+            flex-direction: row;
+            justify-content: flex-start;
+            min-height: var(--tap);
+            padding: 0.4rem 0.9rem;
             gap: 0.75rem;
-            margin-bottom: 1rem;
+            border-style: solid;
+            border-width: 1px;
+            border-color: var(--border);
+            border-radius: var(--radius);
+            text-align: left;
+        }
+
+        .has-file .dz-icon {
+            width: 24px;
+            height: 24px;
+        }
+
+        .has-file .dz-empty,
+        .has-file .hint {
+            display: none;
+        }
+
+        .has-file .dz-file {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            min-width: 0;
+            flex: 1;
+        }
+
+        .dz-file .name {
+            font-weight: 600;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .dz-file .change {
+            margin-left: auto;
+            color: var(--primary);
+            font-size: 0.9rem;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .busy .dropzone {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        /* Texto según el tipo de puntero: en iPad no se "hace clic" ni se arrastra */
+        .only-touch {
+            display: none;
+        }
+
+        @media (pointer: coarse) {
+            .only-mouse { display: none; }
+            .only-touch { display: inline; }
+        }
+
+        /* Sin archivo no hay nada que mostrar salvo la zona de archivo */
+        .app:not(.has-file) .statusbar,
+        .app:not(.has-file) .toolbar,
+        .app:not(.has-file) .panes {
+            display: none;
+        }
+
+        /* ---- Estado y progreso ---- */
+        .statusbar {
+            display: flex;
+            align-items: center;
             flex-wrap: wrap;
+            gap: 0.25rem 0.75rem;
+            min-height: 1.5rem;
         }
 
-        button {
-            background-color: var(--primary);
-            color: white;
-            border: none;
-            padding: 0.6rem 1.2rem;
-            border-radius: 6px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-
-        button:hover {
-            background-color: var(--primary-hover);
-        }
-
-        button.secondary {
-            background-color: #475569;
-        }
-
-        button.secondary:hover {
-            background-color: #334155;
-        }
-
-        button:disabled {
-            background-color: #cbd5e1;
-            cursor: not-allowed;
-        }
-
-        #status {
+        #statusText {
             font-size: 0.9rem;
             font-weight: 500;
-            margin-bottom: 0.5rem;
             color: var(--primary);
         }
 
-        /* Estilos del editor y visor */
+        .statusbar[data-kind="ok"] #statusText { color: #15803d; }
+        .statusbar[data-kind="error"] #statusText { color: #b91c1c; }
+
+        .bar {
+            flex: 1;
+            min-width: 120px;
+            max-width: 360px;
+            height: 8px;
+            border-radius: 99px;
+            background: var(--border);
+            overflow: hidden;
+        }
+
+        .bar > span {
+            display: block;
+            height: 100%;
+            width: 0;
+            background: var(--primary);
+            border-radius: inherit;
+            transition: width 0.25s ease;
+        }
+
+        .bar.indeterminate > span {
+            width: 35%;
+            transition: none;
+            animation: bar-slide 1.1s ease-in-out infinite;
+        }
+
+        @keyframes bar-slide {
+            from { transform: translateX(-100%); }
+            to { transform: translateX(300%); }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .bar.indeterminate > span { animation: none; width: 100%; opacity: 0.5; }
+        }
+
+        /* ---- Acciones ---- */
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .segmented {
+            display: inline-flex;
+            gap: 3px;
+            margin-left: auto;
+            padding: 3px;
+            background: #e2e8f0;
+            border-radius: var(--radius);
+        }
+
+        .segmented button {
+            min-height: calc(var(--tap) - 6px);
+            padding: 0 1rem;
+            border: 0;
+            border-radius: 8px;
+            background: transparent;
+            color: var(--text);
+            font: inherit;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            touch-action: manipulation;
+        }
+
+        .segmented button[aria-pressed="true"] {
+            background: var(--card-bg);
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+        }
+
+        /* ---- Editor y visor: ocupan todo el alto disponible ---- */
+        .panes {
+            flex: 1;
+            min-height: 220px;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr);
+            grid-template-rows: minmax(0, 1fr);
+            gap: 0.75rem;
+        }
+
+        .panes[data-view="code"] #preview { display: none; }
+        .panes[data-view="preview"] #output { display: none; }
+
         textarea, .preview-box {
             width: 100%;
-            height: 450px;
+            height: 100%;
+            min-height: 0;
             padding: 1rem;
             border: 1px solid var(--border);
-            border-radius: 8px;
-            box-sizing: border-box;
+            border-radius: var(--radius);
             overflow-y: auto;
+            overscroll-behavior: contain;
+            -webkit-overflow-scrolling: touch;
         }
 
         textarea {
-            font-family: monospace;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
             font-size: 0.9rem;
-            resize: vertical;
-            background-color: #f8fafc;
+            line-height: 1.5;
+            resize: none;
+            background-color: var(--bg);
+            color: var(--text);
+        }
+
+        /* Con menos de 16 px, iOS amplía la página al tocar el campo para escribir */
+        @media (pointer: coarse) {
+            textarea { font-size: 16px; }
         }
 
         /* Estilos CSS para renderizar correctamente el Markdown en el Visor */
@@ -140,6 +484,16 @@
             background-color: #ffffff;
             color: #0f172a;
             line-height: 1.6;
+            overflow-wrap: break-word;
+        }
+
+        .preview-box:empty::before {
+            content: "La vista previa aparecerá aquí...";
+            color: var(--muted);
+        }
+
+        .preview-box > :first-child {
+            margin-top: 0;
         }
 
         .preview-box h1, .preview-box h2, .preview-box h3 {
@@ -167,7 +521,7 @@
             border-left: 4px solid var(--primary);
             margin: 0;
             padding-left: 1rem;
-            color: #64748b;
+            color: var(--muted);
         }
 
         .preview-box table {
@@ -186,55 +540,211 @@
             background-color: #f1f5f9;
         }
 
-        .credits {
-            margin-top: 1.5rem;
-            padding-top: 1rem;
-            border-top: 1px solid var(--border);
-            font-size: 0.8rem;
-            color: #64748b;
-            text-align: center;
+        /* Pantallas anchas (iPad horizontal, escritorio): código y vista previa lado a lado */
+        @media (min-width: 900px) {
+            .panes { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+            .panes[data-view] #output,
+            .panes[data-view] #preview { display: block; }
+            .segmented { display: none; }
         }
 
-        .credits a {
-            color: inherit;
+        @media (max-width: 700px) {
+            h1 { font-size: 1rem; white-space: normal; }
+            .tagline { display: none; }
+            .btn.about .label { display: none; }
+            .btn.about { padding: 0; min-width: var(--tap); }
+        }
+
+        /* ---- Aviso breve (reemplaza al alert) ---- */
+        .toast {
+            position: fixed;
+            left: 50%;
+            bottom: max(1.25rem, env(safe-area-inset-bottom));
+            transform: translate(-50%, 20px);
+            max-width: calc(100vw - 2rem);
+            padding: 0.7rem 1.1rem;
+            border-radius: 99px;
+            background: #0f172a;
+            color: #fff;
+            font-size: 0.9rem;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s, transform 0.2s;
+            z-index: 10;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translate(-50%, 0);
+        }
+
+        /* ---- Acerca de ---- */
+        dialog {
+            width: 100%;
+            max-width: min(560px, calc(100vw - 2rem));
+            max-height: calc(100dvh - 2rem);
+            padding: 0;
+            border: 0;
+            border-radius: 14px;
+            color: var(--text);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+        }
+
+        dialog::backdrop {
+            background: rgba(15, 23, 42, 0.5);
+        }
+
+        .dialog-body {
+            padding: 1.25rem 1.5rem;
+        }
+
+        dialog h2 {
+            margin: 0 0 0.5rem;
+            font-size: 1.15rem;
+        }
+
+        dialog h3 {
+            margin: 1.25rem 0 0.25rem;
+            font-size: 0.95rem;
+        }
+
+        dialog p {
+            margin: 0.5rem 0;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            color: var(--muted);
+        }
+
+        .libs {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+
+        .libs th, .libs td {
+            padding: 0.45rem 0.5rem 0.45rem 0;
+            border-bottom: 1px solid var(--border);
+            text-align: left;
+            vertical-align: top;
+        }
+
+        .libs th {
+            color: var(--muted);
+            font-weight: 600;
+        }
+
+        dialog a {
+            color: var(--primary);
+        }
+
+        .dialog-actions {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 1.25rem;
         }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h1>Convertidor y Visor Markdown</h1>
-    <p>Soporta <strong>PDF, Word (.docx), texto (.txt, .html, .rtf, .md) e imágenes (.png, .jpg, .jpeg, .webp)</strong>. El OCR utiliza español y conserva tildes.</p>
+<header class="topbar">
+    <div class="topbar-inner">
+        <div class="brand">
+            <img src="icons/icon.svg" alt="" width="32" height="32">
+            <div style="min-width: 0;">
+                <h1>Convertidor y Visor Markdown</h1>
+                <div class="tagline">PDF, Word, HTML, texto e imágenes con OCR en español</div>
+            </div>
+        </div>
+        <button class="btn" id="installBtn" type="button" hidden>Instalar</button>
+        <button class="btn ghost about" id="aboutBtn" type="button" aria-label="Acerca de">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+            <span class="label">Acerca de</span>
+        </button>
+    </div>
+</header>
 
-    <div class="dropzone" id="dropzone" onclick="document.getElementById('fileInput').click()">
-        <span>Arrastra tu archivo aquí o <strong>haz clic para seleccionar</strong></span>
-        <input type="file" id="fileInput" accept=".pdf,.docx,.txt,.html,.htm,.rtf,.md,.png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp">
+<main class="app" id="app">
+    <div class="hint" id="iosHint" hidden>
+        <span>Para instalarla: toca <strong>Compartir</strong> y luego <strong>«Añadir a pantalla de inicio»</strong>.</span>
+        <button class="btn ghost" id="iosHintClose" type="button" aria-label="Cerrar aviso">&times;</button>
     </div>
 
-    <div id="status"></div>
+    <label class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Elegir un archivo para convertir">
+        <svg class="dz-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M12 17v-6M9.5 13.5 12 11l2.5 2.5"/></svg>
+        <div class="dz-empty">
+            <div class="dz-title">
+                <span class="only-mouse">Arrastra tu archivo aquí</span>
+                <span class="only-touch">Toca para elegir un archivo</span>
+            </div>
+            <div class="dz-sub">
+                <span class="only-mouse">o haz clic para seleccionarlo</span>
+                <span class="only-touch">o elige uno desde tus archivos</span>
+            </div>
+            <div class="dz-formats" aria-label="Formatos admitidos">
+                <span class="chip">PDF</span>
+                <span class="chip">Word (.docx)</span>
+                <span class="chip">HTML</span>
+                <span class="chip">TXT / MD</span>
+                <span class="chip">PNG · JPG · WEBP (OCR)</span>
+            </div>
+            <div class="dz-sub">Se procesa en este dispositivo; no se sube a ningún servidor.</div>
+        </div>
+        <div class="dz-file">
+            <span class="name" id="fileName"></span>
+            <span class="change">Cambiar archivo</span>
+        </div>
+        <input type="file" id="fileInput" hidden accept=".pdf,.docx,.txt,.html,.htm,.rtf,.md,.png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp">
+    </label>
 
-    <div class="controls">
-        <button id="copyBtn" disabled onclick="copyToClipboard()">Copiar al portapapeles</button>
-        <button id="downloadBtn" disabled onclick="downloadMd()">Descargar .md</button>
-        <button id="previewBtn" class="secondary" disabled onclick="togglePreview()">Ver Vista Previa (Visor MD)</button>
+    <div class="statusbar" id="statusbar" hidden>
+        <div id="statusText" role="status" aria-live="polite"></div>
+        <div class="bar" id="progressBar" role="progressbar" aria-label="Progreso de la conversión" aria-valuemin="0" aria-valuemax="100" hidden><span id="progressFill"></span></div>
     </div>
 
-    <!-- Área de Código -->
-    <textarea id="output" placeholder="El resultado en Markdown aparecerá aquí..."></textarea>
-    
-    <!-- Área de Visor MD (Oculto por defecto) -->
-    <div id="preview" class="preview-box" style="display: none;"></div>
+    <div class="toolbar">
+        <button class="btn" id="copyBtn" type="button" disabled onclick="copyToClipboard()">Copiar</button>
+        <button class="btn" id="downloadBtn" type="button" disabled onclick="downloadMd()">Descargar .md</button>
+        <button class="btn secondary" id="shareBtn" type="button" hidden disabled onclick="shareMd()">Compartir</button>
+        <div class="segmented" role="group" aria-label="Vista">
+            <button id="viewCode" type="button" aria-pressed="true" onclick="setView('code')">Código</button>
+            <button id="viewPreview" type="button" aria-pressed="false" onclick="setView('preview')">Vista previa</button>
+        </div>
+    </div>
 
-    <footer class="credits">
-        Los archivos se procesan en tu navegador; no se suben a ningún servidor.<br>
-        Hecho con
-        <a href="https://mozilla.github.io/pdf.js/" target="_blank" rel="noopener">PDF.js</a>,
-        <a href="https://github.com/naptha/tesseract.js" target="_blank" rel="noopener">Tesseract.js</a>,
-        <a href="https://github.com/mwilliamson/mammoth.js" target="_blank" rel="noopener">Mammoth.js</a>,
-        <a href="https://github.com/mixmark-io/turndown" target="_blank" rel="noopener">Turndown</a> y
-        <a href="https://github.com/markedjs/marked" target="_blank" rel="noopener">Marked</a>.
-    </footer>
-</div>
+    <div class="panes" id="panes" data-view="code">
+        <!-- Área de Código -->
+        <textarea id="output" spellcheck="false" aria-label="Markdown" placeholder="El resultado en Markdown aparecerá aquí..."></textarea>
+        <!-- Área de Visor MD -->
+        <div id="preview" class="preview-box" aria-label="Vista previa"></div>
+    </div>
+</main>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<dialog id="aboutDialog" aria-labelledby="aboutTitle">
+    <div class="dialog-body">
+        <h2 id="aboutTitle">Acerca de</h2>
+        <p>Convierte PDF (con texto o escaneados), Word, HTML, texto e imágenes a Markdown. El OCR usa español y conserva las tildes. Los archivos se procesan en tu navegador; no se suben a ningún servidor.</p>
+
+        <h3>Hecho con software de código abierto</h3>
+        <table class="libs">
+            <thead><tr><th>Librería</th><th>Uso</th><th>Licencia</th></tr></thead>
+            <tbody>
+                <tr><td><a href="https://github.com/mozilla/pdf.js" target="_blank" rel="noopener">PDF.js</a></td><td>Lectura de PDF</td><td>Apache 2.0</td></tr>
+                <tr><td><a href="https://github.com/naptha/tesseract.js" target="_blank" rel="noopener">Tesseract.js</a></td><td>OCR</td><td>Apache 2.0</td></tr>
+                <tr><td><a href="https://github.com/tesseract-ocr/tessdata" target="_blank" rel="noopener">Tesseract tessdata</a></td><td>Modelo en español</td><td>Apache 2.0</td></tr>
+                <tr><td><a href="https://github.com/mwilliamson/mammoth.js" target="_blank" rel="noopener">Mammoth.js</a></td><td>Word (.docx)</td><td>BSD-2-Clause</td></tr>
+                <tr><td><a href="https://github.com/mixmark-io/turndown" target="_blank" rel="noopener">Turndown</a></td><td>HTML a Markdown</td><td>MIT</td></tr>
+                <tr><td><a href="https://github.com/markedjs/marked" target="_blank" rel="noopener">Marked</a></td><td>Vista previa</td><td>MIT</td></tr>
+            </tbody>
+        </table>
+        <p>El código de esta aplicación se distribuye bajo licencia MIT. <a href="https://github.com/gabrielhro10/MD" target="_blank" rel="noopener">Ver en GitHub</a></p>
+
+        <div class="dialog-actions">
+            <button class="btn" id="aboutClose" type="button">Cerrar</button>
+        </div>
+    </div>
+</dialog>
 
 <script>
     // Configuración de PDF.js Worker
@@ -245,33 +755,48 @@
         headingStyle: 'atx',
         codeBlockStyle: 'fenced'
     });
-    
+
     // Ignorar e ignorar todas las imágenes
     turndownService.remove('img');
 
+    const app = document.getElementById('app');
     const dropzone = document.getElementById('dropzone');
     const fileInput = document.getElementById('fileInput');
+    const fileNameEl = document.getElementById('fileName');
     const output = document.getElementById('output');
     const preview = document.getElementById('preview');
-    const status = document.getElementById('status');
+    const panes = document.getElementById('panes');
+    const statusbar = document.getElementById('statusbar');
+    const statusText = document.getElementById('statusText');
+    const progressBar = document.getElementById('progressBar');
+    const progressFill = document.getElementById('progressFill');
     const copyBtn = document.getElementById('copyBtn');
     const downloadBtn = document.getElementById('downloadBtn');
-    const previewBtn = document.getElementById('previewBtn');
+    const shareBtn = document.getElementById('shareBtn');
+    const viewCodeBtn = document.getElementById('viewCode');
+    const viewPreviewBtn = document.getElementById('viewPreview');
+    const toastEl = document.getElementById('toast');
 
     let currentFileName = "documento";
-    let isPreviewing = false;
+    let currentView = 'code';
+    let isBusy = false;
 
-    // Manejo de Drag and Drop
-    dropzone.addEventListener('dragover', (e) => {
+    // Manejo de Drag and Drop: se acepta soltar el archivo en cualquier parte de la
+    // página (si no, el navegador abriría el archivo y se perdería el trabajo)
+    const hasFiles = (e) => e.dataTransfer && Array.from(e.dataTransfer.types || []).includes('Files');
+
+    document.addEventListener('dragover', (e) => {
+        if (!hasFiles(e)) return;
         e.preventDefault();
         dropzone.classList.add('dragover');
     });
 
-    dropzone.addEventListener('dragleave', () => {
-        dropzone.classList.remove('dragover');
+    document.addEventListener('dragleave', (e) => {
+        if (!e.relatedTarget) dropzone.classList.remove('dragover');
     });
 
-    dropzone.addEventListener('drop', (e) => {
+    document.addEventListener('drop', (e) => {
+        if (!hasFiles(e)) return;
         e.preventDefault();
         dropzone.classList.remove('dragover');
         if (e.dataTransfer.files.length) {
@@ -280,18 +805,37 @@
     });
 
     fileInput.addEventListener('change', (e) => {
-        if (e.target.files.length) {
-            handleFile(e.target.files[0]);
+        const file = e.target.files[0];
+        // Se vacía para que volver a elegir el mismo archivo dispare 'change' otra vez
+        e.target.value = '';
+        if (file) {
+            handleFile(file);
+        }
+    });
+
+    dropzone.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            fileInput.click();
         }
     });
 
     async function handleFile(file) {
+        if (isBusy) {
+            showToast("Espera a que termine la conversión actual");
+            return;
+        }
+        isBusy = true;
+        app.classList.add('busy');
+
         currentFileName = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
         const extension = file.name.split('.').pop().toLowerCase();
 
         output.value = "";
         preview.innerHTML = "";
-        status.textContent = "Procesando archivo...";
+        fileNameEl.textContent = file.name;
+        app.classList.add('has-file');
+        setStatus("Procesando archivo...", null);
         toggleButtons(false);
 
         try {
@@ -312,18 +856,18 @@
             }
 
             output.value = markdown.trim();
-            status.textContent = "¡Conversión completada con éxito!";
+            setStatus("¡Conversión completada con éxito!", undefined, 'ok');
             toggleButtons(true);
-
-            // Si el visor estaba activo, actualizar su contenido
-            if (isPreviewing) {
-                renderMarkdown();
-            }
+            renderPreviewIfVisible();
         } catch (error) {
             console.error(error);
-            status.textContent = "Error al procesar el archivo: " + error.message;
+            setStatus("Error al procesar el archivo: " + error.message, undefined, 'error');
+        } finally {
+            isBusy = false;
+            app.classList.remove('busy');
         }
     }
+
 
     // Procesar Word (.docx)
     async function processDocx(arrayBuffer) {
@@ -343,17 +887,17 @@
 
         try {
             for (let i = 1; i <= pdf.numPages; i++) {
-                status.textContent = `Procesando página ${i} de ${pdf.numPages}...`;
+                setStatus(`Procesando página ${i} de ${pdf.numPages}...`, (i - 1) / pdf.numPages);
                 const page = await pdf.getPage(i);
                 let lines = await extractTextLines(page);
 
                 if (lines.map(l => l.text).join('').replace(/\s/g, '').length < 20) {
                     if (!ocr) {
-                        status.textContent = "Cargando OCR en español...";
+                        setStatus("Cargando OCR en español...", null);
                         ocr = await createOcr();
                     }
                     const canvas = await renderPage(page, OCR_SCALE);
-                    lines = await ocr.recognize(canvas, `OCR de página ${i} de ${pdf.numPages}`);
+                    lines = await ocr.recognize(canvas, `OCR de página ${i} de ${pdf.numPages}`, (i - 1) / pdf.numPages, 1 / pdf.numPages);
                     canvas.width = canvas.height = 0;
                 }
 
@@ -425,18 +969,25 @@
     // Un solo worker de Tesseract para todo el archivo (antes se creaba uno por página)
     async function createOcr() {
         let label = '';
+        // Tramo de la barra de progreso (0–1) que le corresponde al reconocimiento en curso
+        let from = 0;
+        let span = 1;
         const worker = await Tesseract.createWorker('spa', 1, {
             logger: (message) => {
                 if (message.status === 'recognizing text') {
-                    status.textContent = `${label}: ${Math.round(message.progress * 100)}%`;
+                    setStatus(`${label}: ${Math.round(message.progress * 100)}%`, from + span * message.progress);
+                } else if (message.status === 'loading language traineddata') {
+                    setStatus(`Descargando el idioma español: ${Math.round(message.progress * 100)}%`, null);
                 }
             }
         });
 
         return {
-            async recognize(canvas, text) {
+            async recognize(canvas, text, rangeStart = 0, rangeSpan = 1) {
                 label = text;
-                status.textContent = text + '...';
+                from = rangeStart;
+                span = rangeSpan;
+                setStatus(text + '...', from);
                 const { data } = await worker.recognize(canvas);
                 const lines = [];
                 for (const block of data.blocks || []) {
@@ -470,7 +1021,7 @@
         canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
         bitmap.close();
 
-        status.textContent = "Cargando OCR en español...";
+        setStatus("Cargando OCR en español...", null);
         const ocr = await createOcr();
         try {
             return linesToMarkdown([await ocr.recognize(canvas, 'Reconociendo texto')]);
@@ -742,19 +1293,53 @@
         return text.replace(/^([#>+])/, '\\$1');
     }
 
-    // Alternar entre Vista Previa y Código Fuente
-    function togglePreview() {
-        isPreviewing = !isPreviewing;
+    // ---- Interfaz ----
 
-        if (isPreviewing) {
-            renderMarkdown();
-            output.style.display = 'none';
-            preview.style.display = 'block';
-            previewBtn.textContent = 'Ver Código Markdown';
+    // Texto de estado y barra de progreso.
+    // progress: undefined = sin barra, null = indeterminada, número 0–1 = avance.
+    // kind: '' (en curso), 'ok' o 'error'.
+    function setStatus(text, progress, kind = '') {
+        statusText.textContent = text;
+        statusbar.dataset.kind = kind;
+        statusbar.hidden = !text;
+
+        if (progress === undefined) {
+            progressBar.hidden = true;
+            return;
+        }
+        progressBar.hidden = false;
+        progressBar.classList.toggle('indeterminate', progress === null);
+        if (progress === null) {
+            progressBar.removeAttribute('aria-valuenow');
         } else {
-            output.style.display = 'block';
-            preview.style.display = 'none';
-            previewBtn.textContent = 'Ver Vista Previa (Visor MD)';
+            const percent = Math.round(Math.min(1, Math.max(0, progress)) * 100);
+            progressFill.style.width = percent + '%';
+            progressBar.setAttribute('aria-valuenow', percent);
+        }
+    }
+
+    let toastTimer;
+    function showToast(message) {
+        toastEl.textContent = message;
+        toastEl.classList.add('show');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => toastEl.classList.remove('show'), 2500);
+    }
+
+    // Con 900 px o más se ven código y vista previa a la vez; con menos, uno u otro
+    const wideQuery = window.matchMedia('(min-width: 900px)');
+
+    function setView(view) {
+        currentView = view;
+        panes.dataset.view = view;
+        viewCodeBtn.setAttribute('aria-pressed', String(view === 'code'));
+        viewPreviewBtn.setAttribute('aria-pressed', String(view === 'preview'));
+        renderPreviewIfVisible();
+    }
+
+    function renderPreviewIfVisible() {
+        if (wideQuery.matches || currentView === 'preview') {
+            renderMarkdown();
         }
     }
 
@@ -762,15 +1347,49 @@
         preview.innerHTML = marked.parse(output.value || '*No hay contenido disponible*');
     }
 
+    // La vista previa sigue a lo que se edita en el código
+    let renderTimer;
+    output.addEventListener('input', () => {
+        clearTimeout(renderTimer);
+        renderTimer = setTimeout(renderPreviewIfVisible, 200);
+    });
+    wideQuery.addEventListener('change', renderPreviewIfVisible);
+
     function toggleButtons(enabled) {
         copyBtn.disabled = !enabled;
         downloadBtn.disabled = !enabled;
-        previewBtn.disabled = !enabled;
+        shareBtn.disabled = !enabled;
     }
 
-    function copyToClipboard() {
-        navigator.clipboard.writeText(output.value);
-        alert("¡Texto en Markdown copiado al portapapeles!");
+    async function copyToClipboard() {
+        try {
+            await navigator.clipboard.writeText(output.value);
+        } catch (error) {
+            if (!legacyCopy(output.value)) {
+                showToast("No se pudo copiar el texto");
+                return;
+            }
+        }
+        showToast("Markdown copiado al portapapeles");
+    }
+
+    // Respaldo cuando no hay Clipboard API (p. ej. página sin HTTPS)
+    function legacyCopy(text) {
+        const helper = document.createElement('textarea');
+        helper.value = text;
+        helper.setAttribute('readonly', '');
+        helper.style.cssText = 'position:fixed;top:0;left:0;opacity:0;font-size:16px';
+        document.body.appendChild(helper);
+        helper.select();
+        helper.setSelectionRange(0, text.length);
+        let ok = false;
+        try {
+            ok = document.execCommand('copy');
+        } catch (error) {
+            ok = false;
+        }
+        helper.remove();
+        return ok;
     }
 
     function downloadMd() {
@@ -779,8 +1398,107 @@
         const a = document.createElement('a');
         a.href = url;
         a.download = `${currentFileName}.md`;
+        document.body.appendChild(a);
         a.click();
-        URL.revokeObjectURL(url);
+        a.remove();
+        // Revocar al instante cancela la descarga en algunas versiones de Safari
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    // Compartir / Guardar en Archivos: abre la hoja de compartir del sistema con el .md.
+    // Safari no acepta todos los tipos MIME en canShare, así que se prueba text/markdown
+    // y, si lo rechaza, text/plain (el nombre conserva la extensión .md).
+    function findShareableFile() {
+        if (!navigator.share || !navigator.canShare) return null;
+        for (const type of ['text/markdown', 'text/plain']) {
+            const file = new File([output.value], `${currentFileName}.md`, { type });
+            if (navigator.canShare({ files: [file] })) return file;
+        }
+        return null;
+    }
+
+    async function shareMd() {
+        const file = findShareableFile();
+        if (!file) {
+            downloadMd();
+            return;
+        }
+        try {
+            await navigator.share({ files: [file] });
+        } catch (error) {
+            if (error.name !== 'AbortError') {
+                console.error(error);
+                showToast("No se pudo compartir el archivo");
+            }
+        }
+    }
+
+    shareBtn.hidden = !findShareableFile();
+
+    // ---- Instalación (PWA) ----
+    const installBtn = document.getElementById('installBtn');
+    const iosHint = document.getElementById('iosHint');
+    let installPrompt = null;
+
+    // Chrome, Edge y Android avisan cuando la app se puede instalar
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        installPrompt = e;
+        installBtn.hidden = false;
+    });
+
+    installBtn.addEventListener('click', async () => {
+        if (!installPrompt) return;
+        installPrompt.prompt();
+        await installPrompt.userChoice;
+        installPrompt = null;
+        installBtn.hidden = true;
+    });
+
+    window.addEventListener('appinstalled', () => {
+        installPrompt = null;
+        installBtn.hidden = true;
+    });
+
+    // Safari en iPhone/iPad no tiene esa API: solo se puede explicar el paso manual.
+    // iPadOS se identifica como Mac, de ahí la comprobación de pantalla táctil.
+    const isStandalone = navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+        || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    let iosHintDismissed = false;
+    try {
+        iosHintDismissed = localStorage.getItem('iosHintDismissed') === '1';
+    } catch (error) {}
+    iosHint.hidden = !(isIOS && !isStandalone && !iosHintDismissed);
+
+    document.getElementById('iosHintClose').addEventListener('click', () => {
+        iosHint.hidden = true;
+        try {
+            localStorage.setItem('iosHintDismissed', '1');
+        } catch (error) {}
+    });
+
+    // ---- Acerca de ----
+    const aboutDialog = document.getElementById('aboutDialog');
+    const closeAbout = () => aboutDialog.close ? aboutDialog.close() : aboutDialog.removeAttribute('open');
+
+    document.getElementById('aboutBtn').addEventListener('click', () => {
+        if (aboutDialog.showModal) aboutDialog.showModal();
+        else aboutDialog.setAttribute('open', '');
+    });
+    document.getElementById('aboutClose').addEventListener('click', closeAbout);
+    // Tocar fuera del cuadro (el fondo) lo cierra
+    aboutDialog.addEventListener('click', (e) => {
+        if (e.target === aboutDialog) closeAbout();
+    });
+
+    // ---- Service worker: instalación y uso sin conexión ----
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('sw.js').catch((error) => {
+                console.warn('No se pudo registrar el service worker:', error);
+            });
+        });
     }
 </script>
 
