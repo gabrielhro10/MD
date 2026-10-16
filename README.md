@@ -11,11 +11,12 @@ Los archivos se procesan localmente en el navegador; no se envían a ningún ser
 
 ## Uso
 
-Abre la página publicada en <https://gabrielhro10.github.io/MD/>.
+<<<<<<< HEAD
+Abre la página publicada en <https://gabrielhro10.github.io/MD/>, o sirve esta carpeta con GitHub Pages (**Settings → Pages → Deploy from a branch → `main` / root**).
 
 Para probarla en local hace falta un servidor (el service worker no funciona abriendo `index.html` como archivo), por ejemplo `python -m http.server` y abrir <http://localhost:8000>.
 
-El texto y el visor ocupan toda la pantalla, bajo una barra superior translúcida (efecto vidrio) con las acciones **Abrir**, **Copiar**, **Descargar** y **Compartir** (abre la hoja del sistema para guardar el `.md` en Archivos u otra app). Un único botón en la esquina superior derecha alterna entre el texto Markdown (**Código**, para copiar) y la **Vista previa**. Tocando el logo se abre *Acerca de*, con los créditos y la instalación.
+En pantallas anchas (iPad horizontal, escritorio) el Markdown y su vista previa se ven lado a lado; en pantallas estrechas se alterna entre **Código** y **Vista previa**. El botón **Compartir** abre la hoja del sistema para guardar el `.md` en Archivos u otra app.
 
 ## Instalar como app (PWA)
 
@@ -37,6 +38,9 @@ Al publicar cambios en `index.html`, `manifest.webmanifest` o los iconos, sube `
 ## Icono
 
 El icono (`icons/`) se dibuja en [icons/icon.svg](icons/icon.svg). Los PNG (192, 512, maskable 512 y `apple-touch-icon` de 180) se exportan de ese SVG.
+=======
+Necesita conexión a internet: las librerías se cargan desde CDN, y el OCR descarga el modelo de idioma español la primera vez.
+>>>>>>> fb2a4c29db797db3b24d657cf8f597d65cfb8e73
 
 ## Créditos
 
