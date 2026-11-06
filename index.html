@@ -6,8 +6,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>Convertidor y Visor Markdown (.md)</title>
     <meta name="description" content="Convierte PDF, Word, HTML, texto e imágenes (con OCR en español) a Markdown, directamente en el navegador.">
-    <meta name="color-scheme" content="light">
-    <meta name="theme-color" content="#ffffff">
+    <meta name="color-scheme" content="light dark">
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
 
     <!-- PWA: instalable y disponible sin conexión (ver manifest.webmanifest y sw.js) -->
     <link rel="manifest" href="manifest.webmanifest">
@@ -455,23 +456,6 @@
             font-size: 0.9rem;
         }
 
-        .dz-formats {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.4rem;
-            justify-content: center;
-            margin: 0.9rem 0 0.6rem;
-        }
-
-        .chip {
-            font-size: 0.75rem;
-            font-weight: 600;
-            color: var(--muted);
-            background: #f1f5f9;
-            border-radius: 99px;
-            padding: 0.2rem 0.65rem;
-        }
-
         /* Texto según el tipo de puntero: en iPad no se "hace clic" ni se arrastra */
         .only-touch {
             display: none;
@@ -646,6 +630,7 @@
             height: 44px;
         }
     </style>
+    <link rel="stylesheet" href="ios.css">
 </head>
 <body>
 
@@ -667,14 +652,6 @@
                 <span class="only-mouse">o haz clic para seleccionarlo</span>
                 <span class="only-touch">o elige uno desde tus archivos</span>
             </div>
-            <div class="dz-formats" aria-label="Formatos admitidos">
-                <span class="chip">PDF</span>
-                <span class="chip">Word (.docx)</span>
-                <span class="chip">HTML</span>
-                <span class="chip">TXT / MD</span>
-                <span class="chip">PNG · JPG · WEBP (OCR)</span>
-            </div>
-            <div class="dz-sub">Se procesa en este dispositivo; no se sube a ningún servidor.</div>
         </div>
     </label>
     <input type="file" id="fileInput" hidden accept=".pdf,.docx,.txt,.html,.htm,.rtf,.md,.png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp">
@@ -706,7 +683,7 @@
             </button>
             <div class="who">
                 <b id="whoName">Convertidor y Visor Markdown</b>
-                <small id="whoMeta">PDF, Word, HTML, texto e imágenes con OCR en español</small>
+                <small id="whoMeta"></small>
             </div>
             <button class="btn open" id="openBtn" type="button" aria-label="Abrir otro archivo">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M12 11v5M9.5 13.5h5"/></svg>
@@ -741,12 +718,31 @@
     </header>
 </div>
 
+<footer class="foot">
+    <details class="about">
+        <summary><span class="ver">Markdown v<span id="app-version"></span></span><span class="ver-desc">Convierte documentos a Markdown</span></summary>
+        <div class="about-body">
+            <div class="update-row" id="update-row" data-state="idle">
+                <span id="update-text" role="status" aria-live="polite">Actualización</span>
+                <button type="button" id="btn-update" aria-label="Buscar actualización" title="Buscar actualización"><svg class="ic" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7"/><path d="M20 4v5h-5"/></svg></button>
+            </div>
+            <ul>
+                <li><span>PDF.js</span><span>3.11.174</span></li>
+                <li><span>Tesseract.js</span><span>5.1.1</span></li>
+                <li><span>Mammoth.js</span><span>1.6.0</span></li>
+                <li><span>Turndown</span><span>7.1.2</span></li>
+                <li><span>Marked</span><span>9.1.6</span></li>
+            </ul>
+        </div>
+    </details>
+</footer>
+
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <dialog id="aboutDialog" aria-labelledby="aboutTitle">
     <div class="dialog-body">
         <h2 id="aboutTitle">Convertidor y Visor Markdown</h2>
-        <p>Convierte PDF (con texto o escaneados), Word, HTML, texto e imágenes a Markdown. El OCR usa español y conserva las tildes. Los archivos se procesan en tu navegador; no se suben a ningún servidor.</p>
+        <p>Se procesa en tu dispositivo; no se sube nada a ningún servidor.</p>
 
         <div class="install" id="installBox" hidden>
             <span>Instala la app para usarla en pantalla completa y sin conexión.</span>
@@ -776,6 +772,8 @@
     </div>
 </dialog>
 
+<script src="version.js"></script>
+<script src="update.js"></script>
 <script>
     // Configuración de PDF.js Worker
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -1519,7 +1517,10 @@
     });
 
     // ---- Service worker: instalación y uso sin conexión ----
-    if ('serviceWorker' in navigator) {
+    document.getElementById('app-version').textContent = self.APP_VERSION;
+    AppUpdate.init();
+
+    if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
         window.addEventListener('load', () => {
             navigator.serviceWorker.register('sw.js').catch((error) => {
                 console.warn('No se pudo registrar el service worker:', error);

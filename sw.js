@@ -1,17 +1,20 @@
 // This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the MPL was not distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0/.
 // Service worker: deja la app disponible sin conexión.
-//  - El shell (HTML, manifest, iconos) va en una caché versionada: cambia SHELL_VERSION
-//    al publicar para que los usuarios descarguen los archivos nuevos.
+//  - El shell (HTML, manifest, iconos) va en una caché versionada con la versión de
+//    version.js: súbela al publicar para que los usuarios descarguen los archivos nuevos.
 //  - Las librerías del CDN llevan la versión en la URL, así que se guardan una vez y no
 //    caducan: viven en su propia caché para no volver a bajar el OCR (varios MB) en cada
 //    versión del shell.
-const SHELL_VERSION = 'v3';
-const SHELL_CACHE = `md-shell-${SHELL_VERSION}`;
+importScripts('version.js');
+const SHELL_CACHE = `md-shell-${self.APP_VERSION}`;
 const LIB_CACHE = 'md-libs';
 
 const SHELL_URLS = [
     './',
     './index.html',
+    './version.js',
+    './update.js',
+    './ios.css',
     './manifest.webmanifest',
     './icons/icon.svg',
     './icons/icon-192.png',
@@ -37,7 +40,8 @@ const NETWORK_TIMEOUT_MS = 4000;
 self.addEventListener('install', (event) => {
     event.waitUntil((async () => {
         const shell = await caches.open(SHELL_CACHE);
-        await shell.addAll(SHELL_URLS);
+        // cache: 'reload' evita que GitHub Pages devuelva una copia vieja de la caché HTTP.
+        await shell.addAll(SHELL_URLS.map((url) => new Request(url, { cache: 'reload' })));
 
         // Si el CDN falla ahora no se aborta la instalación: se reintenta al usarlas.
         const libs = await caches.open(LIB_CACHE);
@@ -68,9 +72,7 @@ self.addEventListener('fetch', (event) => {
     if (CDN_HOSTS.includes(url.hostname)) {
         event.respondWith(cdnCacheFirst(request.url, event));
     } else if (url.origin === self.location.origin) {
-        event.respondWith(request.mode === 'navigate'
-            ? networkFirst(request, event)
-            : staleWhileRevalidate(request, event));
+        event.respondWith(networkFirst(request, event));
     }
     // Resto: lo gestiona el navegador.
 });
@@ -87,8 +89,8 @@ async function cdnCacheFirst(url, event) {
     return response;
 }
 
-// El HTML se pide primero a la red para que las versiones nuevas lleguen en cuanto hay
-// conexión; sin red (o con red muy lenta) se usa la copia guardada.
+// Todo el shell se pide primero a la red: la página nunca mezcla un HTML nuevo con un JS
+// viejo de la caché justo después de publicar. Sin red (o con red muy lenta) se usa la copia guardada.
 async function networkFirst(request, event) {
     const cache = await caches.open(SHELL_CACHE);
     try {
@@ -96,26 +98,11 @@ async function networkFirst(request, event) {
             fetch(request),
             new Promise((_, reject) => setTimeout(reject, NETWORK_TIMEOUT_MS))
         ]);
-        if (response.ok) event.waitUntil(cache.put(request, response.clone()));
+        if (response.ok && response.status === 200) event.waitUntil(cache.put(request, response.clone()));
         return response;
     } catch (error) {
         return (await cache.match(request, { ignoreSearch: true }))
-            || (await cache.match('./index.html'))
+            || (request.mode === 'navigate' ? await cache.match('./index.html') : undefined)
             || Response.error();
     }
-}
-
-async function staleWhileRevalidate(request, event) {
-    const cache = await caches.open(SHELL_CACHE);
-    const cached = await cache.match(request);
-    const update = fetch(request).then((response) => {
-        if (response.ok) cache.put(request, response.clone());
-        return response;
-    });
-
-    if (cached) {
-        event.waitUntil(update.catch(() => {}));
-        return cached;
-    }
-    return update;
 }
