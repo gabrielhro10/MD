@@ -1,0 +1,125 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the MPL was not distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0/. */
+/* Capa de diseño iOS (patrón de la skill pwa-ios-app). Se carga DESPUÉS de la hoja inline de index.html.
+   Cambiar el color de la app = cambiar --accent. */
+
+/* ---------- Tokens ---------- */
+:root {
+  --accent: #2563eb;
+  --accent-ink: #ffffff;
+  --danger: #dc2626;
+  --bg: #ffffff;
+  --bar-tint: color-mix(in srgb, var(--accent) 7%, #ffffff);
+  --card: #ffffff;
+  --ink: #0f172a;
+  --muted: #64748b;
+  --fill: rgba(15, 23, 42, .045);
+  --fill-2: rgba(15, 23, 42, .07);
+  --fill-3: rgba(15, 23, 42, .13);
+  --line: rgba(15, 23, 42, .10);
+  --radius: 18px;
+  --accent-tint: color-mix(in srgb, var(--accent) 14%, transparent);
+  --glass: color-mix(in srgb, var(--card) 80%, transparent);
+  --foot: calc(44px + env(safe-area-inset-bottom, 0px));   /* espacio que ocupa el pie flotante */
+  /* nombres de la hoja de la app, apuntando a los tokens */
+  --paper: var(--bg);
+  --text: var(--ink);
+  --border: var(--line);
+  --primary: var(--accent);
+  --primary-hover: var(--accent);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #000000; --bar-tint: color-mix(in srgb, var(--accent) 9%, #000000); --card: #1c1c1e; --ink: #f2f2f7; --muted: #9a9aa3;
+    --fill: rgba(255, 255, 255, .06); --fill-2: rgba(255, 255, 255, .10); --fill-3: rgba(255, 255, 255, .17);
+    --line: rgba(255, 255, 255, .12);
+  }
+}
+
+html, body { background: var(--bg); color: var(--ink); font-family: system-ui, -apple-system, "SF Pro Text", sans-serif; font-size: 15px; }
+:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 55%, transparent); outline-offset: 2px; }
+
+/* Sin barras de desplazamiento visibles (el desplazamiento sigue funcionando) */
+* { scrollbar-width: none; }
+*::-webkit-scrollbar { display: none; }
+
+/* ---------- Botones: píldoras sobre un tinte, sin borde ---------- */
+.btn { background: var(--fill-2); color: var(--ink); font-size: 14px; }
+.btn.tint { background: var(--accent-tint); color: var(--accent); }
+.btn.solid { background: var(--accent); color: var(--accent-ink); }
+.btn:disabled { opacity: .38; }
+@media (hover: hover) {
+  .btn:hover:not(:disabled) { background: var(--fill-3); }
+  .btn.tint:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 22%, transparent); }
+  .btn.solid:hover:not(:disabled) { background: var(--accent); filter: brightness(1.07); }
+}
+
+/* ---------- Barra superior de vidrio ----------
+   En iOS la barra de estado la pinta el sistema (blanca en claro, negra en oscuro) y no se puede teñir: la barra
+   arranca exactamente de ese color (--bg, opaco hasta la zona segura) y solo hacia abajo se vuelve vidrio tintado. */
+.bar {
+  background: linear-gradient(to bottom, var(--bg) 0, var(--bg) env(safe-area-inset-top, 0px),
+    color-mix(in srgb, var(--bg) 62%, transparent) env(safe-area-inset-top, 0px),
+    color-mix(in srgb, var(--bar-tint) 78%, transparent) 100%);
+  border-bottom: .5px solid color-mix(in srgb, var(--ink) 6%, transparent);
+}
+.bar-fade { background: linear-gradient(to bottom, color-mix(in srgb, var(--bar-tint) 25%, transparent), transparent); }
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .bar { background: color-mix(in srgb, var(--bar-tint) 97%, transparent); }
+}
+.who b { font-size: 16px; font-weight: 700; letter-spacing: -.01em; }
+.who small { font-size: 13px; }
+.who small:empty { display: none; }
+
+/* ---------- Editor y visor: encima del pie ---------- */
+#output, #preview { background: var(--bg); }
+#output { padding-bottom: calc(var(--foot) + 16px); color: var(--ink); }
+#preview { padding-bottom: calc(var(--foot) + 16px); }
+#preview h1, #preview h2, #preview h3 { border-bottom: .5px solid var(--line); }
+#preview code, #preview pre, #preview th { background: var(--fill); }
+#preview th, #preview td { border: .5px solid var(--line); }
+#preview blockquote { border-left-color: var(--accent); }
+
+/* ---------- Estados sin documento ---------- */
+.center { bottom: calc(var(--foot) + 4px); border-radius: var(--radius); }
+.dropzone { border: 0; background: var(--fill); }
+.dropzone.dragover { background: var(--accent-tint); }
+@media (hover: hover) { .dropzone:hover { background: var(--fill-2); } }
+.dropzone.dragover:hover { background: var(--accent-tint); }
+.skeleton i { background: linear-gradient(90deg, var(--fill-2), var(--fill), var(--fill-2)); background-size: 200% 100%; }
+
+/* ---------- Avisos, diálogo ---------- */
+.toast { background: #0f172a; color: #fff; box-shadow: none; bottom: calc(var(--foot) + 12px); }
+dialog { background: var(--card); color: var(--ink); border: 0; border-radius: 18px; }
+dialog::backdrop { background: rgba(15, 23, 42, .4); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.install { background: var(--fill); color: var(--ink); border-radius: 16px; }
+.libs th, .libs td { border-bottom: .5px solid var(--line); }
+dialog a { color: var(--accent); }
+
+/* ---------- Pie: píldora pequeña abajo a la izquierda, se mimetiza con el fondo; versión, actualización y créditos ---------- */
+.logo { cursor: default; }
+.foot {
+  position: fixed; left: max(10px, env(safe-area-inset-left)); bottom: calc(env(safe-area-inset-bottom, 0px) + 6px); z-index: 8;
+  max-width: calc(100vw - 20px); border-radius: 16px; padding: 0 12px;
+  background: color-mix(in srgb, var(--bg) 88%, transparent); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+}
+.about { position: relative; color: var(--muted); font-size: 13px; }
+.about summary { list-style: none; display: flex; align-items: center; gap: 10px; height: 34px; cursor: pointer; }
+.about summary::-webkit-details-marker { display: none; }
+.ver { font-size: 15px; font-weight: 700; letter-spacing: -.01em; color: var(--ink); white-space: nowrap; }
+.ver-desc { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+@media (max-width: 479px) { .ver-desc { display: none; } }
+.about-body {
+  position: absolute; left: -12px; bottom: 100%; width: min(440px, calc(100vw - 20px)); margin-bottom: 8px; padding: 4px 16px 8px;
+  background: color-mix(in srgb, var(--card) 94%, transparent); -webkit-backdrop-filter: blur(24px) saturate(180%); backdrop-filter: blur(24px) saturate(180%);
+  border: .5px solid var(--line); border-radius: 16px; box-shadow: 0 12px 40px rgb(0 0 0 / .18);
+}
+.about-body ul { margin: 0; padding: 0; list-style: none; }
+.about-body li, .update-row { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 8px 0; border-top: .5px solid var(--line); font-variant-numeric: tabular-nums; }
+.about-body li a { color: var(--ink); }
+.linkbtn { background: none; border: 0; padding: 0; font: inherit; color: var(--accent); font-weight: 600; cursor: pointer; }
+.update-row { border-top: 0; }
+.update-row[data-state="busy"] #update-text, .update-row[data-state="done"] #update-text { color: var(--ink); }
+.update-row button { width: 44px; height: 44px; margin-right: -12px; padding: 0; display: grid; place-items: center; border: 0; border-radius: 50%; background: none; color: var(--muted); cursor: pointer; }
+.update-row[data-state="busy"] .ic { animation: update-spin 1s linear infinite; }
+@keyframes update-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .update-row[data-state="busy"] .ic { animation: none; } }
